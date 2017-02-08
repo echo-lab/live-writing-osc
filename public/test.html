@@ -1,0 +1,53 @@
+<script src="../js/jquery-1.11.1.min.js" type="text/javascript"></script>
+<script src="../js/jquery-ui.min.js" type="text/javascript"></script>
+
+<script>
+$(document).ready(function(){
+
+  var AudioContext = window.AudioContext || window.webkitAudioContext;
+  var context = new AudioContext();
+  navigator.getUserMedia = (navigator.getUserMedia ||
+                            navigator.webkitGetUserMedia ||
+                            navigator.mozGetUserMedia ||
+                            navigator.msGetUserMedia);
+  if (navigator.getUserMedia) {
+    var audioOpts = {
+      audio: {
+        optional: [
+          //{sourceId: audio_source},  // do it like this to take the default audio src
+          {googAutoGainControl: false},
+          {googAutoGainControl2: false},
+          {googEchoCancellation: false},
+          {googEchoCancellation2: false},
+          {googNoiseSuppression: false},
+          {googNoiseSuppression2: false},
+          {googHighpassFilter: false},
+          {googTypingNoiseDetection: false},
+          {googAudioMirroring: false}
+        ]
+     },
+     video: false
+    };
+
+    console.log('getUserMedia supported.');
+    var p = navigator.getUserMedia(
+      audioOpts
+      , function(mediaStream) {
+        var sourceMic = context.createMediaStreamSource(mediaStream);
+        sourceMic.connect(context.destination);
+      },
+      function(error) {
+        console.log('The following gUM error occured: ' + err);
+      }
+    );
+
+
+  }
+});
+
+</script>
+
+<body>
+  <div> hello world?</div>
+
+</body>
