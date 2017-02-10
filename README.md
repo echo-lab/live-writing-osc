@@ -23,3 +23,5 @@
    - `/send/moseup [x coodrinate] [y coodrinate]`
    - `/send/mosedown [x coodrinate] [y coodrinate]`
    - `/send/wheel [wheel data]`
+- reference
+   - for keycode refer this website: http://keycode.info/
