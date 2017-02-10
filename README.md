@@ -6,7 +6,11 @@
 2. download this repository. 
 3. open Terminal and go to the directory. 
 4. run `npm install`
-5. run `node server.js`
+
+## run
+1. run `node server.js`
+2. on a web browser visit http://localhost:8080
+3. you have to run the step 1 everytime you refresh the web page. 
 
 ## osc messages
 
