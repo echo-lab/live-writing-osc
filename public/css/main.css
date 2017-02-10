@@ -12,6 +12,15 @@ body{
     font-family: 'Open Sans', sans-serif;
 }
 
+table, th, td {
+    border: 1px solid black;
+}
+#debug-panel{
+  position :fixed;
+  bottom:0px;
+  right:0px;
+
+}
 .text {
 font-family:Verdana, Arial, Helvetica, sans-serif;
 font-size:20px;

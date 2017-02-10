@@ -283,15 +283,25 @@
   <div id= "micselect" class="select">
     <label for="audioSource1">Audio source (visual): </label>
     <select id="audioSource1"><option>select your mic</select>
-    <label for="audioSource2">Audio source (audio): </label>
-    <select id="audioSource2"><option>select your mic</select>
-    <button id="hide">hide</button> press right command(window) key to turn the page! Use Chrome!
+    <button id="hide">hide</button>
+    <button id="debug_button">set debug to false</button>
   </div>
   <div id = "debug-panel">
     <table>
       <tr>
-        <td>name</td><td>keyDown</td><td>keyPress</td><td>keyUp</td><td>mouseUp</td></tr><tr><td>keycode</td><td><div id="keydown_debug"></div></td><td><div id="keypress_debug"></div></td><td><div id="keyup_debug"></div></td><td><div id="mouseup_debug"></div></td></tr><tr><td>start</td><td><div id="start_down_debug"></div></td><td><div id="start_press_debug"></div></td><td><div id="start_up_debug"></div></td><td><div id="start_mouseup_debug"></div></td></tr><tr><td>end</td><td><div id="end_down_debug"></div></td><td><div id="end_press_debug"></div></td><td><div id="end_up_debug"></div></td><td><div id="end_mouseup_debug"></div></td></tr></table>
-      </div>
+        <td>name</td><td>keyDown</td><td>keyPress</td><td>keyUp</td><td>mouseUp</td>
+      </tr>
+      <tr>
+        <td>keycode</td><td><div id="keydown_debug"></div></td><td><div id="keypress_debug"></div></td><td><div id="keyup_debug"></div></td><td><div id="mouseup_debug"></div></td>
+      </tr>
+      <tr>
+        <td>start</td><td><div id="start_down_debug"></div></td><td><div id="start_press_debug"></div></td><td><div id="start_up_debug"></div></td><td><div id="start_mouseup_debug"></div></td>
+      </tr>
+      <tr>
+        <td>end</td><td><div id="end_down_debug"></div></td><td><div id="end_press_debug"></div></td><td><div id="end_up_debug"></div></td><td><div id="end_mouseup_debug"></div></td>
+      </tr>
+    </table>
+  </div>
   <div class="main-editor">
     <textarea id ="livetext"></textarea>
   </div>
@@ -299,6 +309,6 @@
   <script src="soundmap.js"></script>
   <script src="http://127.0.0.1:8081/socket.io/socket.io.js"></script>
 
-  <script src="icmc2016.js"></script>
+  <script src="main.js"></script>
 
 </html>
