@@ -1,30 +1,8 @@
 
 
-socket = io.connect('http://127.0.0.1', { port: 8081, rememberTransport: false});
-console.log('oi');
-socket.on('connect', function() {
-     // sends to socket.io server the host/port of oscServer
-     // and oscClient
-     socket.emit('config',
-         {
-             server: {
-                 port: 3333,
-                 host: '127.0.0.1'
-             },
-             client: {
-                 port: 3334,
-                 host: '127.0.0.1'
-             }
-         }
-     );
- });
-
- socket.on('message', function(obj) {
-     var status = document.getElementById("status");
-     status.innerHTML = obj[0];
-     console.log(obj);
- });
-
+var null_geo,cursorTop, cursorMiddle, cursorBottom,cursorBlinkCount,cursorBlink,cursorBlinkFunction;
+var cursorNotSelected = true;
+var cursorColor = 0xa3c6ff;
  var context = WX._ctx;
  function getRandomInt (min, max) {
      return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -380,35 +358,26 @@ if(enableSound){
     var book;
     var geoindex = 0;
     var geo = {};
-    var pageStrIndex = [];
-    var books = [];
-    var currentPage = 0;
-    var pageContent = [];
-    var strPage = [];
-    var lineindex = [];
+    var strIndex;
+    var glEditor;
+    var initialString = [];
+    var lineindex = 0;
 
-    var numCharPage = [400, 670, 376];
 
-    var numPage = 3;
     var cmGrid = [];
 
-    for (var i=0; i< numPage; i++)
-    {
-        lineindex[i] = 0;
-        geo[i] = [];
-        geo[i][0] = new THREE.Geometry();
-        strPage[i] = "";
-        pageStrIndex[i] = 0;
-        cmGrid[i] = [];
-        // strPage[i] = "blocks of the streets becomes my poem.\ntrees of the road becomes my court\ndimmed lights reflecting in my eyes\npeople walking round in their disguise.\n\ni am feeling lonely in this zone.\ni feel the chill deep in my bones.\nthe crowd is isolating me.\nin paranoia i will be.\n\nthis gloomy streets are nursing me.\ndark alleys are my home to be.\nnocturnal fog becomes my air\nif i live or die.\nwould you care?";
-        // var BOOK="Writing efficient WebGL code requires a certain mindset. The usual way to draw using WebGL is to set up your uniforms, buffers and shaders for each object, followed by a call to draw the object. This way of drawing works when drawing a small number of objects. To draw a large number of objects, you should minimize the amount of WebGL state changes. To start with, draw all objects using the same shader after each other, so that you don't have to change shaders between objects. For simple objects like particles, you could bundle several objects into a single buffer and edit it using JavaScript. That way you'd only have to reupload the vertex buffer instead of changing shader uniforms for every single particle.";
+    lineindex = 0;
+    geo = [];
+    geo[0] = new THREE.Geometry();
+    initialString="";
+    strIndex = 0;
+    cmGrid = [];
 
-    }
 
     var fontSize = 32;
     var lettersPerSide = 16;
 
-    var currIndex=[0,0,0], currentLine=[1,1,1], prevJLastLine=[0,0,0];
+    var currIndex=0, currentLine=0, prevJLastLine=0;
     var scaleX = 0.7, scaleY = 1.9;
   //  var scaleX = 5, scaleY = 12;
 
@@ -417,9 +386,8 @@ if(enableSound){
     var letterPerLine = 50;
     var linePerScreen = 10;
     var offset = 1.0;
-//    var offset = 8.0;
+  // var offset = 8.0;
     var attributes = {
-      pageIndex: {type: 'f', value: [] },
       strIndex: {type: 'f', value: [] },
       lineIndex: {type: 'f', value: [] },
       chIndex: {type: 'f', value: [] },
@@ -439,12 +407,12 @@ if(enableSound){
         var cy = Math.floor(code / lettersPerSide);
         //  var localscaleX = scaleX * (1+sizeFactor);
         var localOffset = offset * (1+sizeFactor*2.0);
-        var localY = currentLine[currentPage]*scaleY - (sizeFactor/4.0);
-        geo[currentPage][geoindex].vertices.push(
-            new THREE.Vector3( currIndex[currentPage]*scaleX, localY, 0 ), // left bottom
-            new THREE.Vector3( currIndex[currentPage]*scaleX+localOffset, localY, 0 ), //right bottom
-            new THREE.Vector3( currIndex[currentPage]*scaleX+localOffset, localY+localOffset, 0 ),// right top
-            new THREE.Vector3( currIndex[currentPage]*scaleX, localY+localOffset, 0 )// left top
+        var localY = currentLine*scaleY - (sizeFactor/4.0);
+        geo[geoindex].vertices.push(
+            new THREE.Vector3( currIndex*scaleX, localY, 0 ), // left bottom
+            new THREE.Vector3( currIndex*scaleX+localOffset, localY, 0 ), //right bottom
+            new THREE.Vector3( currIndex*scaleX+localOffset, localY+localOffset, 0 ),// right top
+            new THREE.Vector3( currIndex*scaleX, localY+localOffset, 0 )// left top
         );
         //   console.log("sizeFactor:" + sizeFactor + " added(" + (j*scaleX) + "," + (j*scaleX + offset) +" strIndex : " + strIndex + ")");
         for (var k=0; k<4;k++){
@@ -452,45 +420,45 @@ if(enableSound){
           attributes.alphabetIndex.value[strIndex*4+k] = alphabetIndex;// THREE.Vector2(6.0,12.0);
         }
         var face = new THREE.Face3(strIndex*4+0, strIndex*4+1, strIndex*4+2);
-        geo[currentPage][geoindex].faces.push(face);
+        geo[geoindex].faces.push(face);
         face = new THREE.Face3(strIndex*4+0, strIndex*4+2, strIndex*4+3);
-        geo[currentPage][geoindex].faces.push(face);
+        geo[geoindex].faces.push(face);
         var ox=(cx)/lettersPerSide, oy=(cy+0.05)/lettersPerSide, off=0.9/lettersPerSide;
       //  var sz = lettersPerSide*fontSize;
-        geo[currentPage][geoindex].faceVertexUvs[0].push([
+        geo[geoindex].faceVertexUvs[0].push([
             new THREE.Vector2( ox, oy+off ),
             new THREE.Vector2( ox+off, oy+off ),
             new THREE.Vector2( ox+off, oy )
         ]);
-        geo[currentPage][geoindex].faceVertexUvs[0].push([
+        geo[geoindex].faceVertexUvs[0].push([
             new THREE.Vector2( ox, oy+off ),
             new THREE.Vector2( ox+off, oy ),
             new THREE.Vector2( ox, oy )
         ]);
 
-        if (code == 10 || code == 13 || currIndex[currentPage]  == letterPerLine) {
-            currentLine[currentPage]--;
-            prevJLastLine[currentPage] = currIndex[currentPage];
-            currIndex[currentPage]=0;
+        if (code == 10 || code == 13 || currIndex  == letterPerLine) {
+            currentLine--;
+            prevJLastLine = currIndex;
+            currIndex=0;
         } else {
-            currIndex[currentPage]++;
-            if (rightMostPosition<currIndex[currentPage]){
-                rightMostXCoord = currIndex[currentPage]*scaleX+offset;
-                rightMostPosition = currIndex[currentPage];
+            currIndex++;
+            if (rightMostPosition<currIndex){
+                rightMostXCoord = currIndex*scaleX+offset;
+                rightMostPosition = currIndex;
             }
         }
     } // the end of addLetter
 
     // making it behind the eye so it will disappear
     var removeLetterCodeMirror = function(line,ch){
-      var object = cmGrid[currentPage][line][ch];
+      var object = cmGrid[line][ch];
       var strIndex = object.index;
 
       console.log("removing letter index(",line,",",ch,") : ", strIndex);
-      geo[currentPage][geoindex].vertices[strIndex*4].y = +50;
-      geo[currentPage][geoindex].vertices[strIndex*4+1].y = +50;
-      geo[currentPage][geoindex].vertices[strIndex*4+2].y = +50;
-      geo[currentPage][geoindex].vertices[strIndex*4+3].y = +50;
+      geo[geoindex].vertices[strIndex*4].y = +50;
+      geo[geoindex].vertices[strIndex*4+1].y = +50;
+      geo[geoindex].vertices[strIndex*4+2].y = +50;
+      geo[geoindex].vertices[strIndex*4+3].y = +50;
     }
 
     var shiftLetterVerticallyCodeMirror = function(object,line, shiftAmount){
@@ -499,10 +467,10 @@ if(enableSound){
       var localY = (2-line - shiftAmount)*scaleY - (sizeFactor/4.0);
       var localOffset = offset * (1+sizeFactor*2.0);
 
-      geo[currentPage][geoindex].vertices[strIndex*4].y = localY;
-      geo[currentPage][geoindex].vertices[strIndex*4+1].y = localY;
-      geo[currentPage][geoindex].vertices[strIndex*4+2].y = localY+localOffset;
-      geo[currentPage][geoindex].vertices[strIndex*4+3].y = localY+localOffset;
+      geo[geoindex].vertices[strIndex*4].y = localY;
+      geo[geoindex].vertices[strIndex*4+1].y = localY;
+      geo[geoindex].vertices[strIndex*4+2].y = localY+localOffset;
+      geo[geoindex].vertices[strIndex*4+3].y = localY+localOffset;
     }
 
     var shiftLetterHorizontallyCodeMirror = function(object,from, shiftAmount){
@@ -514,10 +482,10 @@ if(enableSound){
       var sizeFactor = object.sizeFactor;
       console.log("move the ", strIndex,"th letter ",shiftAmount," spaces.");
       var localOffset = offset * (1+sizeFactor*2.0);
-      geo[currentPage][geoindex].vertices[strIndex*4].x = (from+shiftAmount) * scaleX;
-      geo[currentPage][geoindex].vertices[strIndex*4+1].x = (from+shiftAmount) * scaleX+localOffset;
-      geo[currentPage][geoindex].vertices[strIndex*4+2].x = (from+shiftAmount) * scaleX+localOffset;
-      geo[currentPage][geoindex].vertices[strIndex*4+3].x = (from+shiftAmount) * scaleX;
+      geo[geoindex].vertices[strIndex*4].x = (from+shiftAmount) * scaleX;
+      geo[geoindex].vertices[strIndex*4+1].x = (from+shiftAmount) * scaleX+localOffset;
+      geo[geoindex].vertices[strIndex*4+2].x = (from+shiftAmount) * scaleX+localOffset;
+      geo[geoindex].vertices[strIndex*4+3].x = (from+shiftAmount) * scaleX;
     }
 
     var addLetterCodeMirror = function (line, ch, sizeFactor, char){
@@ -543,9 +511,7 @@ if(enableSound){
           }
       }
 
-      var strIndex = pageStrIndex[currentPage];
-      pageStrIndex[currentPage]++;
-      cmGrid[currentPage][line][ch] = {index:strIndex, sizeFactor:sizeFactor, char: char};
+      cmGrid[line][ch] = {index:strIndex, sizeFactor:sizeFactor, char: char};
 
       if(char.length!=1){
         console.error("addLetterCodeMirror : no char added");
@@ -561,8 +527,8 @@ if(enableSound){
       var cy = Math.floor(code / lettersPerSide);
       //  var localscaleX = scaleX * (1+sizeFactor);
       var localOffset = offset * (1+sizeFactor*2.0);
-      var localY = (2-line)*scaleY - (sizeFactor/4.0);
-      geo[currentPage][geoindex].vertices.push(
+      var localY = (-line)*scaleY - (sizeFactor/4.0);
+      geo[geoindex].vertices.push(
           new THREE.Vector3( ch*scaleX, localY, 0 ), // left bottom
           new THREE.Vector3( ch*scaleX+localOffset, localY, 0 ), //right bottom
           new THREE.Vector3( ch*scaleX+localOffset, localY+localOffset, 0 ),// right top
@@ -570,31 +536,29 @@ if(enableSound){
       );
 
       for (var k=0; k<4;k++){
-        attributes.pageIndex.value[strIndex*4+k] = currentPage;
         attributes.strIndex.value[strIndex*4+k] = strIndex;// THREE.Vector2(6.0,12.0);
         attributes.lineIndex.value[strIndex*4+k] = line;// THREE.Vector2(6.0,12.0);
         attributes.chIndex.value[strIndex*4+k] = ch;// THREE.Vector2(6.0,12.0);
         attributes.alphabetIndex.value[strIndex*4+k] = alphabetIndex;// THREE.Vector2(6.0,12.0);
       }
       var face = new THREE.Face3(strIndex*4+0, strIndex*4+1, strIndex*4+2);
-      geo[currentPage][geoindex].faces.push(face);
+      geo[geoindex].faces.push(face);
       face = new THREE.Face3(strIndex*4+0, strIndex*4+2, strIndex*4+3);
-      geo[currentPage][geoindex].faces.push(face);
+      geo[geoindex].faces.push(face);
       var ox=(cx)/lettersPerSide, oy=(cy+0.05)/lettersPerSide, off=0.9/lettersPerSide;
     // the end of addLetterCodeMirror
     //  var sz = lettersPerSide*fontSize;
-      geo[currentPage][geoindex].faceVertexUvs[0].push([
+      geo[geoindex].faceVertexUvs[0].push([
           new THREE.Vector2( ox, oy+off ),
           new THREE.Vector2( ox+off, oy+off ),
           new THREE.Vector2( ox+off, oy )
       ]);
-      geo[currentPage][geoindex].faceVertexUvs[0].push([
+      geo[geoindex].faceVertexUvs[0].push([
           new THREE.Vector2( ox, oy+off ),
           new THREE.Vector2( ox+off, oy ),
           new THREE.Vector2( ox, oy )
       ]);
-
-
+      strIndex++;
     }
 
     var renderer = new THREE.WebGLRenderer({antialias: true});
@@ -614,6 +578,10 @@ if(enableSound){
     var camera = new THREE.PerspectiveCamera(45,1,4,40000);
     camera.setLens(35);
 
+  //  var camera = new THREE.PerspectiveCamera( 40, window.innerWidth / window.innerHeight, 1, 1000 );
+  //  camera.position.z = 100;
+    //scene.add( camera );
+
     window.onresize = function() {
         renderer.setSize(window.innerWidth, window.innerHeight);
         camera.aspect = window.innerWidth / window.innerHeight;
@@ -621,21 +589,17 @@ if(enableSound){
     };
     window.onresize();
 
-    var radius = 0;
 
     var scene = new THREE.Scene();
-    camera.position.z = radius;
+    camera.position.z = 50;
+    console.log("camera position", camera.position);
     scene.add(camera);
 
-    var str = strPage[currentPage];
+    var str = initialString;
     var centerX = (letterPerLine) * scaleX / 2.0;
     var centerY = (-linePerScreen * scaleY )/2.0;
 
-    for (i=0; i<str.length; i++) {
-        addLetter(str.charCodeAt(i),i,0);
-    }
-    geo[1][geoindex] = geo[0][geoindex].clone();
-    geo[2][geoindex] = geo[0][geoindex].clone();
+
     rightMostXCoord = (rightMostPosition+1) * scaleX;
 
     //  console.log("length:" + attributes.attCenter.value.length);
@@ -677,36 +641,78 @@ if(enableSound){
     var w = 80 * 1.1;
     var n = 18;
     var r = w  * 1/Math.PI * 2;
-    for (var i=0; i<numPage; i++) {
-
-        pageContent[i] = "";
-
-        books[i] = new THREE.Mesh(
-            geo[i][geoindex],
-            shaderMaterial
-        );
+    glEditor = new THREE.Mesh(
+        geo[geoindex],
+        shaderMaterial
+    );
 
 
-        books[i].doubleSided = true;
-        var a = i/n * Math.PI*4 + Math.PI/2;
-        books[i].position.x = Math.cos(Math.PI*0.9+a) * r;
-        books[i].position.z = Math.sin(Math.PI*0.9+a) * r;
-        books[i].rotation.y = Math.PI/2 - a;
-        //book.position.x -= centerX;
-        books[i].position.y -= centerY;
-        //book.position.z = 0;
-        top.add(books[i]);
+    glEditor.doubleSided = true;
+    var a = 0/n * Math.PI*4 + Math.PI/2;
+    glEditor.position.x = -centerX;
+    glEditor.position.z = 0;
+    //book.position.x -= centerX;
+    glEditor.position.y =-centerY;
+    //book.position.z = 0;
+    top.add(glEditor);
+
+
+    var cursor_material = new THREE.MeshBasicMaterial({color: cursorColor });
+    var cursor_geo = new THREE.Geometry();
+    null_geo = new THREE.Geometry();
+    i=0;
+    console.log("glEditor.position", glEditor.position);
+    cursor_geo.vertices.push(new THREE.Vector3(-centerX,-centerY,0));
+    cursor_geo.vertices.push(new THREE.Vector3(-centerX+0.1,-centerY,0));
+    cursor_geo.vertices.push(new THREE.Vector3(-centerX+0.1,-centerY+offset,0));
+    cursor_geo.vertices.push(new THREE.Vector3(-centerX,-centerY+offset,0));
+    null_geo.vertices.push(new THREE.Vector3(-centerX,-centerY,0));
+    null_geo.vertices.push(new THREE.Vector3(-centerX,-centerY,0));
+    null_geo.vertices.push(new THREE.Vector3(-centerX,-centerY,0));
+    null_geo.vertices.push(new THREE.Vector3(-centerX,-centerY,0));
+/*
+    cursor_geo.vertices.push(new THREE.Vector3(glEditor.position.x, glEditor.position.y, glEditor.position.z+1));
+    cursor_geo.vertices.push(new THREE.Vector3(glEditor.position.x+0.1, glEditor.position.y, glEditor.position.z+1));
+    cursor_geo.vertices.push(new THREE.Vector3(glEditor.position.x+.1, glEditor.position.y+1, glEditor.position.z+1));
+    cursor_geo.vertices.push(new THREE.Vector3(glEditor.position.x, glEditor.position.y+1, glEditor.position.z+1));
+*/
+    var face = new THREE.Face3(0,1,2);
+    cursor_geo.faces.push(face);
+    null_geo.faces.push(face);
+    face = new THREE.Face3(0, 2, 3);
+    cursor_geo.faces.push(face);
+    null_geo.faces.push(face);
+
+    cursorTop = new THREE.Mesh(cursor_geo, cursor_material);
+    cursorMiddle= new THREE.Mesh(null_geo, cursor_material);
+    cursorBottom = new THREE.Mesh(null_geo.clone(), cursor_material);
+    scene.add(cursorMiddle);
+    scene.add(cursorBottom);
+    scene.add(cursorTop);
+
+    cursorBlinkCount=0;
+    cursorBlinkFunction = function(){
+      cursorBlinkCount++;
+      cursorBlinkCount%=2;
+      if(cursorBlinkCount%2==1&& cursorNotSelected){
+          cursorTop.material.color.setHex(0xffffff);
       }
+      else{
+          cursorTop.material.color.setHex(cursorColor);
+      }
+    };
+    cursorBlink = setInterval(cursorBlinkFunction,400)
 
-      scene.add(top);
 
+    scene.add(top);
+    console.log("scene.position", scene.position);
     camera.lookAt(scene.position);
 
     var state = 0;
     var snapToggle = false;
     var tdscale = 5.0;
 
-    var currengPage1StartTime = 0;
+    renderer.render(scene, camera);
     var animate = function(t) {
 
         var alpha = 0.8;
@@ -714,25 +720,11 @@ if(enableSound){
         analyser.getByteFrequencyData(amplitudeArray);
         analyser.getByteTimeDomainData(amplitudeArray2);
 
-        if(noiseBurstOn){
-            noiseBurstAnalyser.getByteTimeDomainData(amplitudeArray3);
-            var noiseVolume = getAverageVolume(amplitudeArray3);
-            uniforms.noise.value = noiseVolume[0] / 128.0 * 0.005;
-        }
-
         var resultArr = getAverageVolume(amplitudeArray);
         volume = alpha * (resultArr[0]/128.0) + (1-alpha) * volume;
         uniforms.volume.value = volume/1.5;
         freqIndex = resultArr[1];
-        if(currentPage == 1 && lineindex[currentPage] <=8 ){
-            camera.rotation.y -= 0.00015;
-            uniforms.time.value += 0.05;
-            uniforms.interval.value = Math.max(Math.min(interval,1.0),0.0);
-        }
-        else if ( currentPage >= 1){
-            camera.rotation.y -= 0.00005;
-            uniforms.time.value -= 0.12;
-        }
+
         alpha = 0.85;
         uniforms.rightMostXCoord.value = rightMostXCoord;
 
@@ -740,7 +732,7 @@ if(enableSound){
             uniforms.timeDomain.value[l] = uniforms.timeDomain.value[l] * alpha + (1-alpha ) * (amplitudeArray2[l]/256.0-0.5) * tdscale;
         }
         try {
-          renderer.render(scene, camera);
+         renderer.render(scene, camera);
         }
         catch(err){
           console.error("renderer errorrorro ");
@@ -787,7 +779,6 @@ if(enableSound){
     window.onkeyup = function(ev){
 
          var keycode = ev.which;
-         socket.emit('message', '/send/keyup '+keycode);
 
          if(DEBUG){
             $("#keyup_debug").html(keycode);
@@ -806,76 +797,17 @@ if(enableSound){
     window.onkeydown = function(ev){
         if(enableCodeMirror)editor.focus();
         var keycode = ev.which;
-        socket.emit('message', '/send/keydown '+keycode);
 
         if (keycode == 8){// backspace
             // backspace is not supported for now.
             ev.preventDefault();
         }
-        else if (keycode == 93 || keycode == 18 || keycode == 92){ // right command key
-          pageContent[currentPage] = editor.getDoc().getValue();
-          currentPage++;
-          currentPage%=numPage;
+        if(DEBUG){
+          $("#keydown_debug").html(keycode);
 
-          editor.getDoc().setValue(pageContent[currentPage]);
-          editor.focus();
-          editor.execCommand("goDocEnd")
-
-            geoindex = 0;
-            if (currentPage == 2){
-                //
-
-
-            }
-            else if (currentPage == 1){ // the 2nd page
-              // the 2nd page shader
-                var shaderMaterial = new THREE.ShaderMaterial({
-                    uniforms : uniforms,
-                    attributes : attributes,
-                    vertexShader : document.querySelector('#vertex2').textContent,
-                    fragmentShader : document.querySelector('#fragment2').textContent
-                });
-                shaderMaterial.transparent = true;
-                shaderMaterial.depthTest = false;
-                interval = 1.0;
-                uniforms.time.value = 0;
-                //for (var i=0; i< numPage-1; i++)
-                books[1].material = shaderMaterial;
-
-            }
-
-        }
-        else if (currentPage ==2 && lineindex[currentPage] >4 && (keycode == 69 || keycode == 79)){ // either e or o
-        // clear the whole writing if commnad enter pressed.
-
-            var dur = (keyInterval+0.1) / (keyIntervalCnt+0.1) / 4;
-            noiseBurstadsr.play(0,dur, dur, dur, dur,1.0,0.1);
-            // burst is needed for visualization
-            noiseBurstOn = true;
-            setTimeout(function(){
-                noiseBurstOn = false;
-                uniforms.noise.value = 0.0;
-            }, dur * 4000)
-        }
-        else if(ev.shiftKey == true && keycode == 13){ // shift enter
-            if ( currentPage == 2){
-                noiseBurstadsr.node.gain.linearRampToValueAtTime(1.0, context.currentTime );
-                noiseBurstadsr.node.gain.linearRampToValueAtTime(1.0, context.currentTime +8);
-                uniforms.time.value -= 0.1;
-                noiseBurstOn = true;
-                /* fade out is not needed
-                masterGain.gain.linearRampToValueAtTime(1.0,context.currentTime);
-                masterGain.gain.linearRampToValueAtTime(1.0,context.currentTime + 5);
-                masterGain.gain.linearRampToValueAtTime(0.0,context.currentTime + 12);
-                */
-            }
-        }
-          if(DEBUG){
-            $("#keydown_debug").html(keycode);
-
-            keydown_debug_color_index++;
-            keydown_debug_color_index%=randomcolor.length;
-            $("#keydown_debug").css("background-color", randomcolor[keydown_debug_color_index]);
+          keydown_debug_color_index++;
+          keydown_debug_color_index%=randomcolor.length;
+          $("#keydown_debug").css("background-color", randomcolor[keydown_debug_color_index]);
         }
          // THIS IS OLD onkeypress part starting
         var keycode = ev.which;
@@ -883,7 +815,7 @@ if(enableSound){
         if(ev.ctrlKey == true){
           // turn on keycode
           var alphabetIndex = ev.key.toLowerCase().charCodeAt(0) - 'a'.charCodeAt(0) + 1;
-          if (currentPage >= 1 && alphabetIndex>=0 && alphabetIndex <=26){
+          if ( alphabetIndex>=0 && alphabetIndex <=26){
             coloredStr[alphabetIndex]++;
             coloredStr[alphabetIndex]%=3;
             uniforms.coloredStr.value = coloredStr;
@@ -902,7 +834,7 @@ if(enableSound){
 
         if ( ev.shiftKey == true && ev.which == 13) // shift_enter
         {
-            strPage[currentPage] = "";
+            initialString = "";
         }
 
         // update the visual first.
@@ -910,7 +842,7 @@ if(enableSound){
           var code = keycode;
         }
         else{
-          var code = strPage[currentPage].charCodeAt(strPage[currentPage].length-1);
+          var code = initialString.charCodeAt(initialString.length-1);
         }
 
 
@@ -929,16 +861,12 @@ if(enableSound){
           var prevgeoindex = geoindex;
           geoindex++;
           geoindex%=2;
-          geo[currentPage][geoindex] = geo[currentPage][prevgeoindex].clone();
-          if ( currentPage == 2 && currentLine[2] <-7 && keycode >= 97 && keycode <=122)
-              keycode -= getRandomInt(0,1) * 32;
-          strPage[currentPage] +=String.fromCharCode(keycode);
-          if (lineindex[currentPage] <=11 && currentPage == 0)
-              volume = 0;
-          addLetter(strPage[currentPage].charCodeAt(strPage[currentPage].length-1),strPage[currentPage].length-1,volume);
-          if (currIndex[currentPage] == letterPerLine){
-              strPage[currentPage] += "\n";
-              addLetter(code,strPage[currentPage].length-1,0);
+          geo[geoindex] = geo[prevgeoindex].clone();
+          initialString +=String.fromCharCode(keycode);
+          addLetter(initialString.charCodeAt(initialString.length-1),initialString.length-1,volume);
+          if (currIndex == letterPerLine){
+              initialString += "\n";
+              addLetter(code,initialString.length-1,0);
           }
         }
 
@@ -970,29 +898,15 @@ if(enableSound){
 
 
         if (code == 10 || code == 13){ // enter or linebreak (carrige return)
-            lineindex[currentPage] = editor.getDoc().lineCount()-1;
+            lineindex = editor.getDoc().lineCount()-1;
 
-          if (lineindex[currentPage] == 7 && currentPage == 0){ // thr fifth line the first page
-                var shaderMaterial = new THREE.ShaderMaterial({
-                    uniforms : uniforms,
-                    attributes : attributes,
-                    vertexShader : document.querySelector('#vertex1').textContent,
-                    fragmentShader : document.querySelector('#fragment1').textContent
-                });
-                shaderMaterial.transparent = true;
-                shaderMaterial.depthTest = false;
-                // turn on reverb gain slowly.
-                for (var i=0; i< numPage; i++)
-                    books[i].material = shaderMaterial;
 
-           }
         }
 
-     //books[currentPage].geometry = geo[currentPage][geoindex];
+     //books.geometry = geo[geoindex];
      // let's play pause until
 
      if (!pauseFlag) return;
-     if (currentPage < 1) return;
     }
 
     window.onkeypress = function(ev){
@@ -1003,11 +917,10 @@ if(enableSound){
         keypress_debug_color_index%=randomcolor.length;
         $("#keypress_debug").css("background-color", randomcolor[keypress_debug_color_index]);
       }
-      socket.emit('message', '/send/keypress '+keycode);
+
     }
 
     var wheelHandler = function(ev) {
-        socket.emit('message', '/send/wheel '+ev.wheelDelta);
 
         var ds = (ev.detail < 0 || ev.wheelDelta > 0) ? (1/1.01) : 1.01;
         var fov = camera.fov * ds;
@@ -1022,13 +935,12 @@ if(enableSound){
     var pitchListforDrone = [15,17,22,21,16,10];
     var pitchIndex=0;
     window.onmousemove = function(ev) {
-      socket.emit('message', '/send/mousemove '+ev.clientX+ ' ' + ev.clientY);
 
         if (down) {
             var dx = ev.clientX - sx;
             var dy = ev.clientY - sy;
-      //      books[currentPage].rotation.x += dy/50.0;
-    //        books[currentPage].rotation.y += dx/50.0;
+      //      books.rotation.x += dy/50.0;
+    //        books.rotation.y += dx/50.0;
             camera.rotation.y += dx/500 * (camera.fov/45);;
             //camera.rotation.y += dx/500 * (camera.fov/45);;
             camera.rotation.x += dy/500 * (camera.fov/45);
@@ -1040,7 +952,6 @@ if(enableSound){
     };
     var reached = false
     window.onmousedown = function (ev){
-        socket.emit('message', '/send/mouseDown '+ev.clientX+ ' ' + ev.clientY);
        if (ev.target == renderer.domElement) {
             down = true;
             sx = ev.clientX;
@@ -1049,9 +960,92 @@ if(enableSound){
     };
     window.onmouseup = function(){
         down = false;
-        socket.emit('message', '/send/mouseUp'+ev.clientX+ ' ' + ev.clientY);
     };
 
+    var cursorCodeMirrorFunc = function(cm){
+      if(!cursorTop)
+        return;
+
+      var it = cm.getDoc().getEditor();
+      var fromPos = cm.getDoc().getCursor("from"),
+          toPos = cm.getDoc().getCursor("to");
+      console.log("position:(", fromPos, ",",toPos,")");
+      /*
+      geo[geoindex].vertices.push(
+          new THREE.Vector3( currIndex*scaleX, localY, 0 ), // left bottom
+          new THREE.Vector3( currIndex*scaleX+localOffset, localY, 0 ), //right bottom
+          new THREE.Vector3( currIndex*scaleX+localOffset, localY+localOffset, 0 ),// right top
+          new THREE.Vector3( currIndex*scaleX, localY+localOffset, 0 )// left top
+      );
+      */
+      var localY = fromPos.line*scaleY;
+      cursorMiddle.geometry = null_geo.clone();
+      cursorBottom.geometry = null_geo.clone();
+      if(fromPos.line == toPos.line && fromPos.ch == toPos.ch){
+        cursorTop.geometry.vertices[0].x = -centerX +fromPos.ch*scaleX;
+        cursorTop.geometry.vertices[1].x = -centerX +fromPos.ch*scaleX + 0.1;
+        cursorTop.geometry.vertices[2].x = -centerX +fromPos.ch*scaleX + 0.1;
+        cursorTop.geometry.vertices[3].x = -centerX +fromPos.ch*scaleX;
+        cursorTop.geometry.vertices[0].y = -centerY -localY
+        cursorTop.geometry.vertices[1].y = -centerY -localY
+        cursorTop.geometry.vertices[2].y = -centerY -localY + offset;
+        cursorTop.geometry.vertices[3].y = -centerY -localY + offset;
+        cursorTop.geometry.verticesNeedUpdate = true;
+        clearInterval(cursorBlink);
+        cursorTop.material.color.setHex(0xa3c6ff);
+        cursorBlink = setInterval(cursorBlinkFunction,400)
+      }else if(fromPos.line == toPos.line){
+        cursorTop.geometry.vertices[0].x = -centerX +fromPos.ch*scaleX;
+        cursorTop.geometry.vertices[1].x = -centerX +toPos.ch*scaleX;
+        cursorTop.geometry.vertices[2].x = -centerX +toPos.ch*scaleX;
+        cursorTop.geometry.vertices[3].x = -centerX +fromPos.ch*scaleX;
+        cursorTop.geometry.vertices[0].y = -centerY -localY
+        cursorTop.geometry.vertices[1].y = -centerY -localY
+        cursorTop.geometry.vertices[2].y = -centerY -localY + offset;
+        cursorTop.geometry.vertices[3].y = -centerY -localY + offset;
+        cursorTop.geometry.verticesNeedUpdate = true;
+        clearInterval(cursorBlink);
+        cursorTop.material.color.setHex(0xa3c6ff);
+      }else{
+        cursorTop.geometry.vertices[0].x = -centerX +fromPos.ch*scaleX;
+        cursorTop.geometry.vertices[1].x = -centerX +(rightMostPosition+1)*scaleX;
+        cursorTop.geometry.vertices[2].x = -centerX +(rightMostPosition+1)*scaleX;
+        cursorTop.geometry.vertices[3].x = -centerX +fromPos.ch*scaleX;
+        cursorTop.geometry.vertices[0].y = -centerY -localY
+        cursorTop.geometry.vertices[1].y = -centerY -localY
+        cursorTop.geometry.vertices[2].y = -centerY -localY + offset;
+        cursorTop.geometry.vertices[3].y = -centerY -localY + offset;
+        cursorTop.geometry.verticesNeedUpdate = true;
+
+        var localY2 = toPos.line*scaleY;
+        cursorBottom.geometry.vertices[0].x = -centerX
+        cursorBottom.geometry.vertices[1].x = -centerX +toPos.ch*scaleX;
+        cursorBottom.geometry.vertices[2].x = -centerX +toPos.ch*scaleX;
+        cursorBottom.geometry.vertices[3].x = -centerX
+        cursorBottom.geometry.vertices[0].y = -centerY -localY2
+        cursorBottom.geometry.vertices[1].y = -centerY -localY2
+        cursorBottom.geometry.vertices[2].y = -centerY -localY2 + offset;
+        cursorBottom.geometry.vertices[3].y = -centerY -localY2 + offset;
+        cursorBottom.geometry.verticesNeedUpdate = true;
+
+        if(toPos.line - fromPos.line > 1){
+          cursorMiddle.geometry.vertices[0].x = -centerX
+          cursorMiddle.geometry.vertices[1].x = -centerX +(rightMostPosition+1)*scaleX;
+          cursorMiddle.geometry.vertices[2].x = -centerX +(rightMostPosition+1)*scaleX;
+          cursorMiddle.geometry.vertices[3].x = -centerX
+          cursorMiddle.geometry.vertices[0].y = -centerY -localY2 + offset;
+          cursorMiddle.geometry.vertices[1].y = -centerY -localY2 + offset;
+          cursorMiddle.geometry.vertices[2].y = -centerY -localY;
+          cursorMiddle.geometry.vertices[3].y = -centerY -localY;
+          cursorMiddle.geometry.verticesNeedUpdate = true;
+        }
+
+        clearInterval(cursorBlink);
+        cursorTop.material.color.setHex(0xa3c6ff);
+      }
+
+
+    };
 
     var changeCodeMirrorFunc = function(instance, change){
       if(DEBUG)console.log(change);
@@ -1070,7 +1064,7 @@ if(enableSound){
       var prevgeoindex = geoindex;
       geoindex++;
       geoindex%=2;
-      geo[currentPage][geoindex] = geo[currentPage][prevgeoindex].clone();
+      geo[geoindex] = geo[prevgeoindex].clone();
 
       // take care of removed first.
       if(removed){
@@ -1096,45 +1090,45 @@ if(enableSound){
 
         // shift any leftover in the firstline if the removed letters are in one line
         if (change.removed.length==1 ){// for the first line we need to shift any following letters.
-          if(endCh < cmGrid[currentPage][startLine].length){
+          if(endCh < cmGrid[startLine].length){
             if(startLine != endLine) alert("startLine is not same as endLine something wrong.");
-            for (var i=endCh; i<cmGrid[currentPage][endLine].length; i++){
-              shiftLetterHorizontallyCodeMirror(cmGrid[currentPage][endLine][i],i,-change.removed[0].length);
-              cmGrid[currentPage][endLine][i - change.removed[0].length] = cmGrid[currentPage][endLine][i];
+            for (var i=endCh; i<cmGrid[endLine].length; i++){
+              shiftLetterHorizontallyCodeMirror(cmGrid[endLine][i],i,-change.removed[0].length);
+              cmGrid[endLine][i - change.removed[0].length] = cmGrid[endLine][i];
             }
           }
-          cmGrid[currentPage][startLine].splice(cmGrid[currentPage][startLine].length-(endCh-startCh),change.removed[0].length);
+          cmGrid[startLine].splice(cmGrid[startLine].length-(endCh-startCh),change.removed[0].length);
         }
 
         // shift the first line leftover after endLine
         if (change.removed.length>1 ){// for the first line we need to concatenate them to the line
-          for (var i=endCh; i<cmGrid[currentPage][endLine].length; i++){
-            shiftLetterHorizontallyCodeMirror(cmGrid[currentPage][endLine][i],startCh,i-endCh);
-            shiftLetterVerticallyCodeMirror(cmGrid[currentPage][endLine][i],startLine,0);
-            cmGrid[currentPage][startLine][startCh+i-endCh] = cmGrid[currentPage][endLine][i];
+          for (var i=endCh; i<cmGrid[endLine].length; i++){
+            shiftLetterHorizontallyCodeMirror(cmGrid[endLine][i],startCh,i-endCh);
+            shiftLetterVerticallyCodeMirror(cmGrid[endLine][i],startLine,0);
+            cmGrid[startLine][startCh+i-endCh] = cmGrid[endLine][i];
           }
-          cmGrid[currentPage][startLine].splice(startCh+(cmGrid[currentPage][endLine].length-endCh),cmGrid[currentPage][startLine].length - startCh+(cmGrid[currentPage][endLine].length-endCh));
+          cmGrid[startLine].splice(startCh+(cmGrid[endLine].length-endCh),cmGrid[startLine].length - startCh+(cmGrid[endLine].length-endCh));
 
 
-          for (var i=endLine+1; i<cmGrid[currentPage].length; i++){
-            for (var j=0; j<cmGrid[currentPage][i].length; j++){
-              shiftLetterVerticallyCodeMirror(cmGrid[currentPage][i][j],startLine,i-endLine);
+          for (var i=endLine+1; i<cmGrid.length; i++){
+            for (var j=0; j<cmGrid[i].length; j++){
+              shiftLetterVerticallyCodeMirror(cmGrid[i][j],startLine,i-endLine);
             }
           }
-          cmGrid[currentPage].splice(startLine+1,endLine-startLine);
-          if(cmGrid[currentPage][startLine].length == 0)
-            cmGrid[currentPage].splice(startLine, 1);
+          cmGrid.splice(startLine+1,endLine-startLine);
+          if(cmGrid[startLine].length == 0)
+            cmGrid.splice(startLine, 1);
         }
 
-      /*  if (change.removed.length==1 && cmGrid[currentPage][startLine] && change.removed[0].length>0){// for the first line we need to shift any following letters.
-          if (endCh < cmGrid[currentPage][startLine].length){
-            for (var i=endCh; i<cmGrid[currentPage][endLine].length; i++){
-              shiftLetterHorizontallyCodeMirror(cmGrid[currentPage][endLine][i].index,i,-change.removed[0].length, cmGrid[currentPage][endLine][i].sizeFactor);
-              cmGrid[currentPage][endLine][i - change.removed[0].length] = cmGrid[currentPage][endLine][i];
+      /*  if (change.removed.length==1 && cmGrid[startLine] && change.removed[0].length>0){// for the first line we need to shift any following letters.
+          if (endCh < cmGrid[startLine].length){
+            for (var i=endCh; i<cmGrid[endLine].length; i++){
+              shiftLetterHorizontallyCodeMirror(cmGrid[endLine][i].index,i,-change.removed[0].length, cmGrid[endLine][i].sizeFactor);
+              cmGrid[endLine][i - change.removed[0].length] = cmGrid[endLine][i];
             }
-            cmGrid[currentPage][startLine].splice(endCh,change.removed[0].length);
-          }else if (startCh > cmGrid[currentPage][startLine].length){
-            console.error("ASSERT : startCh > cmGrid[currentPage][startLine].length(",startCh ,">", cmGrid[currentPage][startLine].length,")")
+            cmGrid[startLine].splice(endCh,change.removed[0].length);
+          }else if (startCh > cmGrid[startLine].length){
+            console.error("ASSERT : startCh > cmGrid[startLine].length(",startCh ,">", cmGrid[startLine].length,")")
           }else{
             console.log("no shift needed");
           }
@@ -1143,47 +1137,47 @@ if(enableSound){
       }
 
       if(added){
-        if(cmGrid[currentPage][startLine]=== undefined){
-          cmGrid[currentPage][startLine] = [];
+        if(cmGrid[startLine]=== undefined){
+          cmGrid[startLine] = [];
         }
 
 
         if(change.text.length == 1){
           // the first line first.
           // visually move
-          for (var i=startCh; i<cmGrid[currentPage][startLine].length; i++){
-            shiftLetterHorizontallyCodeMirror(cmGrid[currentPage][startLine][i],i,change.text[0].length);
+          for (var i=startCh; i<cmGrid[startLine].length; i++){
+            shiftLetterHorizontallyCodeMirror(cmGrid[startLine][i],i,change.text[0].length);
           }
           // update datastructure move
           for (var i=0; i<change.text[0].length; i++){
-            cmGrid[currentPage][startLine].splice(startCh,0,undefined);
+            cmGrid[startLine].splice(startCh,0,undefined);
           }
         }else{
           // last line shifting
-          for (var i=startCh; i<cmGrid[currentPage][startLine].length; i++){
-            shiftLetterVerticallyCodeMirror(cmGrid[currentPage][startLine][i],startLine,change.text.length-1);
-            shiftLetterHorizontallyCodeMirror(cmGrid[currentPage][startLine][i],change.text[change.text.length-1].length,i-startCh);
+          for (var i=startCh; i<cmGrid[startLine].length; i++){
+            shiftLetterVerticallyCodeMirror(cmGrid[startLine][i],startLine,change.text.length-1);
+            shiftLetterHorizontallyCodeMirror(cmGrid[startLine][i],change.text[change.text.length-1].length,i-startCh);
           }
           // following lines shifting
-          for (var i=startLine+1; i<cmGrid[currentPage].length; i++){
-            for (var j=0; j<cmGrid[currentPage][i].length; j++){
-              shiftLetterVerticallyCodeMirror(cmGrid[currentPage][i][j],i,change.text.length-1);
+          for (var i=startLine+1; i<cmGrid.length; i++){
+            for (var j=0; j<cmGrid[i].length; j++){
+              shiftLetterVerticallyCodeMirror(cmGrid[i][j],i,change.text.length-1);
             }
           }
 
           for (var i=1; i<change.text.length; i++){
-            cmGrid[currentPage].splice(startLine+1, 0, []);
+            cmGrid.splice(startLine+1, 0, []);
           }
-          var len = cmGrid[currentPage][startLine].length;
+          var len = cmGrid[startLine].length;
           // update the data structure;
           for (var i=startCh; i<len; i++){
-            var object = cmGrid[currentPage][startLine].pop();
-            cmGrid[currentPage][startLine + change.text.length-1].splice(0,0,object);
+            var object = cmGrid[startLine].pop();
+            cmGrid[startLine + change.text.length-1].splice(0,0,object);
           }
 
           // make a space for overwrite
           for (var i=0; i<change.text[change.text.length-1].length; i++){
-            cmGrid[currentPage][startLine + change.text.length-1].splice(0,0,undefined);
+            cmGrid[startLine + change.text.length-1].splice(0,0,undefined);
           }
 
         }
@@ -1202,7 +1196,7 @@ if(enableSound){
 
       }//
 
-      books[currentPage].geometry = geo[currentPage][geoindex];
+      glEditor.geometry = geo[geoindex];
 
 
     };
@@ -1210,6 +1204,8 @@ if(enableSound){
     // the end of changeCodeMirrorFunc
     if(enableCodeMirror){
         editor.on("change", changeCodeMirrorFunc);
+        editor.on("cursorActivity", cursorCodeMirrorFunc);
+
     }
 
 
