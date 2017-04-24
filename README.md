@@ -16,12 +16,12 @@
 
 - lisetning port : 3334
 - types
-   - `/send/keydown [keycode]`
-   - `/send/keypress [keycode]`
-   - `/send/keyup [keycode]`
-   - `/send/mousemove [x coodrinate] [y coodrinate]`
-   - `/send/moseup [x coodrinate] [y coodrinate]`
-   - `/send/mosedown [x coodrinate] [y coodrinate]`
-   - `/send/wheel [wheel data]`
+   - `/keydown [keycode]`
+   - `/keypress [keycode]`
+   - `/keyup [keycode]`
+   - `/mousemove [x coodrinate] [y coodrinate]`
+   - `/moseup [x coodrinate] [y coodrinate]`
+   - `/mosedown [x coodrinate] [y coodrinate]`
+   - `/wheel [wheel data]`
 - reference
    - for keycode refer this website: http://keycode.info/

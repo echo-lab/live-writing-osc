@@ -1,10 +1,10 @@
 
 <html>
   <head>
-    <title>NIME 2016 Live Writing : Gloomy Streets</title>
-    <link rel="stylesheet" type="text/css" href="../css/main.css"/>
+    <title>Live Writing (OSC version)</title>
+    <link rel="stylesheet" type="text/css" href="./css/main.css"/>
     <link rel="stylesheet" type="text/css" href="./main.css"/>
-      <link rel="stylesheet" type="text/css" href="../css/jquery-ui.min.css"/>
+      <link rel="stylesheet" type="text/css" href="./css/jquery-ui.min.css"/>
       <link rel="stylesheet" type="text/css" href="./lib/codemirror/codemirror.css"/>
       <script id="vertex0" type="text/x-glsl-vert">
         varying vec2 vUv;
@@ -259,8 +259,8 @@
           //gl_FragColor = diffuse;
         }
       </script>
-      <script src="../js/jquery-1.11.1.min.js" type="text/javascript"></script>
-      <script src="../js/jquery-ui.min.js" type="text/javascript"></script>
+      <script src="./js/jquery-1.11.1.min.js" type="text/javascript"></script>
+      <script src="./js/jquery-ui.min.js" type="text/javascript"></script>
 
       <script src="Three.js"></script>
       <script src="nfme.js"></script>
@@ -283,13 +283,10 @@
   <div id= "micselect" class="select">
     <label for="audioSource1">Audio source (visual): </label>
     <select id="audioSource1"><option>select your mic</select>
-    <label for="audioSource2">Audio source (audio): </label>
-    <select id="audioSource2"><option>select your mic</select>
-    <button id="hide">hide</button> press right command(window) key to turn the page! Use Chrome!
+    <button id="hide">hide</button>
+    <button id="debug_button">set debug to false</button>
   </div>
   <div id = "debug-panel">
-    <button id="debug_button">set debug to false</button>
-
     <table>
       <tr>
         <td>name</td><td>keyDown</td><td>keyPress</td><td>keyUp</td>
@@ -303,15 +300,18 @@
       <tr>
         <td>end</td><td><div id="end_down_debug"></div></td><td><div id="end_press_debug"></div></td><td><div id="end_up_debug"></div></td>
       </tr>
-      <td>osc message</td><td colspan=3><div id="osc_received"></div></td>
-      </table>
-      </div>
+      <tr>
+        <td>osc message</td><td colspan=3><div id="osc_received"></div></td>
+      </tr>
+    </table>
+  </div>
   <div class="main-editor">
     <textarea id ="livetext"></textarea>
   </div>
   </body>
   <script src="soundmap.js"></script>
   <script src="http://127.0.0.1:8081/socket.io/socket.io.js"></script>
-  <script src="lw_on.js"></script>
+
+  <script src="lw_off.js"></script>
 
 </html>

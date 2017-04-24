@@ -8,7 +8,8 @@
 // modules
 var static = require( 'node-static' ),
     port = 8080,
-    http = require( 'http' );
+    http = require( 'http' ),
+    DEBUG = true;
 
 // config
 var file = new static.Server( './public', {
@@ -23,18 +24,21 @@ var oscServer, oscClient;
 
 io.sockets.on('connection', function (socket) {
   socket.on("config", function (obj) {
+    console.log("config message received:", obj);
     oscServer = new osc.Server(obj.server.port, obj.server.host);
     oscClient = new osc.Client(obj.client.host, obj.client.port);
 
-    oscClient.send('/status', socket.sessionId + ' connected');
+    oscClient.send('/status', 'livewriting lauhced');
 
     oscServer.on('message', function(msg, rinfo) {
-      console.log(msg, rinfo);
-      socket.emit("message", msg);
+      if(DEBUG)console.log("App says", msg);
+      socket.emit("message2", msg);
     });
   });
   socket.on("message", function (obj) {
     oscClient.send(obj);
+    if(DEBUG)console.log("live writing says", obj);
+
   });
 });
 

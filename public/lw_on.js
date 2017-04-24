@@ -1,66 +1,152 @@
 
 
-socket = io.connect('http://127.0.0.1', { port: 8081, rememberTransport: false});
+//socket = io.connect('https://localhost', { port: 8081, rememberTransport: false});
+var socket = io('http://localhost:8081');
+
 console.log('oi');
+socket.on('connect_failed', function(obj){
+    console.log('Connection Failed\n', obj);
+});
+
+
+socket.on('message2', function(obj) {
+  var osc_received = document.getElementById("osc_received");
+  if(osc_received)
+    osc_received.innerHTML = obj;
+  console.log(obj);
+});
+
+
 socket.on('connect', function() {
+    console.log('Connected');
+
      // sends to socket.io server the host/port of oscServer
      // and oscClient
      socket.emit('config',
          {
              server: {
-                 port: 3333,
+                 port: 3333,// listening to 3333
                  host: '127.0.0.1'
              },
              client: {
-                 port: 3334,
+                 port: 3334,// sending to 3334
                  host: '127.0.0.1'
              }
          }
      );
  });
 
- socket.on('message', function(obj) {
-     var status = document.getElementById("status");
-     status.innerHTML = obj[0];
-     console.log(obj);
- });
+function ScissorVoice(noteNum, numOsc, oscType, detune){
+  this.output  = new ADSR();
+  this.maxGain = 1 / numOsc;
+  this.noteNum = noteNum;
+  this.frequency = noteNum2Freq(noteNum);
+  this.oscs = [];
+  for (var i=0; i< numOsc; i++){
+    var osc = context.createOscillator();
+    osc.type = oscType;
+    osc.frequency.value = this.frequency;
+    osc.detune.value = -detune + i * 2 * detune / (numOsc - 1);
+    osc.start(context.currentTime);
+    osc.connect(this.output.node);
+    this.oscs.push(osc);
+  }
+}
 
- var context = WX._ctx;
- function getRandomInt (min, max) {
-     return Math.floor(Math.random() * (max - min + 1)) + min;
- }
+ScissorVoice.prototype.stop = function(time){
+  time =  time | context.currentTime;
+  var it = this;
+  setTimeout(function(){
+    for (var i=0; i<it.oscs.length; i++){
+        it.oscs[i].disconnect();
+    }
 
- function noteNum2Freq(num){
-     return Math.pow(2,(num-57)/12) * 440
- }
+  }, Math.floor((time-context.currentTime)*1000));
+}
 
- function ADSR(){
-     this.node = context.createGain();
-     this.node.gain.value = 0.0;
- }
+ScissorVoice.prototype.detune = function(detune){
+    for (var i=0; i<this.oscs.length; i++){
+        //this.oscs[i].frequency.value = noteNum2Freq(noteNum);
+        this.oscs[i].detune.value -= detune;
+    }
 
- ADSR.prototype.noteOn= function(delay, A,D, peakLevel, sustainlevel){
-     peakLevel = peakLevel || 0.3;
-     sustainlevel = sustainlevel || 0.1;
+}
 
-     this.node.gain.linearRampToValueAtTime(0.0,delay + context.currentTime);
-     this.node.gain.linearRampToValueAtTime(peakLevel,delay + context.currentTime + A); // Attack
-     this.node.gain.linearRampToValueAtTime(sustainlevel,delay + context.currentTime + A + D);// Decay
- }
+ScissorVoice.prototype.connect = function(target){
+  this.output.node.connect(target);
+}
 
- ADSR.prototype.noteOff= function(delay, R, sustainlevel){
-     sustainlevel = sustainlevel || 0.1;
+var context = WX._ctx;
+function getRandomInt (min, max) {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+}
 
-     this.node.gain.linearRampToValueAtTime(sustainlevel,delay + context.currentTime );// Release
-     this.node.gain.linearRampToValueAtTime(0.0,delay + context.currentTime + R);// Release
+function noteNum2Freq(num){
+    return Math.pow(2,(num-57)/12) * 440
+}
 
- }
+function ADSR(){
+    this.node = context.createGain();
+    this.node.gain.value = 0.0;
+}
 
- ADSR.prototype.play= function(time, A,D,S,R, peakLevel, sustainlevel){
-     this.noteOn(time,A,D, peakLevel, sustainlevel);
-     this.noteOff(time+A+D+S,R, sustainlevel);
- }
+ADSR.prototype.noteOn= function(delay, A,D, peakLevel, sustainlevel){
+    peakLevel = peakLevel || 0.3;
+    sustainlevel = sustainlevel || 0.1;
 
+    this.node.gain.linearRampToValueAtTime(0.0,delay + context.currentTime);
+    this.node.gain.linearRampToValueAtTime(peakLevel,delay + context.currentTime + A); // Attack
+    this.node.gain.linearRampToValueAtTime(sustainlevel,delay + context.currentTime + A + D);// Decay
+}
+
+ADSR.prototype.noteOff= function(delay, R, sustainlevel){
+    sustainlevel = sustainlevel || 0.1;
+
+    this.node.gain.linearRampToValueAtTime(sustainlevel,delay + context.currentTime );// Release
+    this.node.gain.linearRampToValueAtTime(0.0,delay + context.currentTime + R);// Release
+
+}
+
+ADSR.prototype.play= function(time, A,D,S,R, peakLevel, sustainlevel){
+    this.noteOn(time,A,D, peakLevel, sustainlevel);
+    this.noteOff(time+A+D+S,R, sustainlevel);
+}
+
+
+function Envelope(){
+    this.node = context.createGain();
+    this.node.gain.value = 1.0;
+}
+
+Envelope.prototype.noteOn= function(time, A,D,S,R){
+  //  this.node.gain.linearRampToValueAtTime(0.0,context.currentTime);
+
+}
+
+function Oscillator(noteNum, type){
+    this.node = context.createOscillator();
+  //  this.node.connect(compressor);
+    this.node.frequency.value = noteNum2Freq(noteNum);
+    this.node.type = type;
+    this.playing = false;
+    if ( type != null && (type == "sine"
+    || type == "square"
+    || type =="sawtooth"
+    || type == "triangle"))
+    {
+        this.node.type = type;
+    }
+}
+
+Oscillator.prototype.play = function(time){
+
+    this.node.start(time);
+
+}
+
+Oscillator.prototype.stop = function( time){
+        this.node.stop(time);
+}
 
 window.onload = function() {
     var DEBUG = true;
@@ -97,6 +183,7 @@ window.onload = function() {
         $("#debug-panel").hide();
         DEBUG = false;
     })
+
     // set up forked web audio context, for multiple browsers
     // window. is needed otherwise Safari explodes
 
@@ -168,7 +255,7 @@ window.onload = function() {
     analyser.smoothingTimeConstant = 0.3;
     analyser.fftSize = 512;
 
-    masterGain.gain.value =0.0;
+    masterGain.gain.value =1.0;
     level_reverb.gain.value = 0.0;
     level_original.gain.value = 1.0;
 
@@ -230,6 +317,7 @@ if(enableSound){
   }
 
     var audioSelectVisual = document.querySelector('select#audioSource1');
+    var audioSelectAudio = document.querySelector('select#audioSource2');
 
     function getSourceID(){
       var MicId = this.value;
@@ -285,47 +373,34 @@ if(enableSound){
 
     audioSelectVisual.onchange = getSourceID;
     audioSelectVisual.sourceType = "visual";
-
+    audioSelectAudio.onchange = getSourceID;
+    audioSelectAudio.sourceType = "audio";
 //https://simpl.info/getusermedia/sources/
-    function gotSources(sourceInfos) {
-      for (var i = 0; i !== sourceInfos.length; ++i) {
-        var sourceInfo = sourceInfos[i];
+    function gotSource(sourceInfo) {
         var option1 = document.createElement('option');
         var option2 = document.createElement('option');
         option1.value = sourceInfo.id;
         option2.value = sourceInfo.id;
-        if (sourceInfo.kind === 'audio') {
-          option1.text = sourceInfo.label || 'microphone ' + (audioSelectVisual.length);
-          option2.text = sourceInfo.label || 'microphone ' + (audioSelectVisual.length);
-        audioSelectVisual.appendChild(option1);
-        } else {
-          console.log('Some other kind of source: ', sourceInfo);
-        }
-      }
-    }
-    // end of     function gotSources(sourceInfos)
-
-    navigator.mediaDevices.enumerateDevices()
-    .then(function(devices) {
-      devices.forEach(function(sourceInfo) {
-        console.log(sourceInfo.kind + ": " + sourceInfo.label +
-                    " id = " + sourceInfo.deviceId);
-        var option1 = document.createElement('option');
-        var option2 = document.createElement('option');
-        option1.value = sourceInfo.deviceId;
-        option2.value = sourceInfo.deviceId;
         if (sourceInfo.kind === 'audioinput') {
           option1.text = sourceInfo.label || 'microphone ' + (audioSelectVisual.length);
           option2.text = sourceInfo.label || 'microphone ' + (audioSelectVisual.length);
         audioSelectVisual.appendChild(option1);
+        audioSelectAudio.appendChild(option2);
         } else {
           console.log('Some other kind of source: ', sourceInfo);
         }
-      });
+    }
+    // end of     function gotSources(sourceInfos)
+    navigator.mediaDevices.enumerateDevices()
+    .then(function(devices) {
+      devices.forEach(gotSource);
     })
     .catch(function(err) {
       console.log(err.name + ": " + err.message);
     });
+
+
+    //  pitch_convolver.buffer = context.createBuffer(2, 2048, context.sampleRate);
 
     var buffers = {};
     if (enableSound){
@@ -718,7 +793,42 @@ if(enableSound){
 
       scene.add(top);
 
+/*
+    var w = 80 * 1.0;
+    var r = w * 1/2 * 1/Math.PI ;
+    //var material = new THREE.MeshBasicMaterial( { color: 0xff0000 } );
+
+    book = new THREE.Mesh(
+        geo[geoindex],
+        shaderMaterial
+    //    material
+    );
+
+    book.doubleSided = true;
+
+    var a = Math.PI/2;
+    book.position.x -= centerX;
+    book.position.y -= centerY;
+    book.position.z = 0;
+    top.add(book);
+
+    scene.add(top);
+*/
+
+    //    camera.position.y = 40;
     camera.lookAt(scene.position);
+    /*   var sp1 = WX.SP1({ ampSustain: 1.0 });
+
+    sp1.to(WX.Master);
+
+    sp1.onReady = function () {
+        sp1.noteOn(60, 100);
+    };
+    sp1.loadClip({
+        name: 'drums',
+        url: './drums.mp3'
+    });*/
+    //  scene.add(geo);
 
     var state = 0;
     var snapToggle = false;
@@ -805,8 +915,6 @@ if(enableSound){
     window.onkeyup = function(ev){
 
          var keycode = ev.which;
-         socket.emit('message', '/send/keyup '+keycode);
-
          if(DEBUG){
             $("#keyup_debug").html(keycode);
             //        $("#start_down_debug").html(pos[0]);
@@ -823,13 +931,26 @@ if(enableSound){
 
     window.onkeydown = function(ev){
         if(enableCodeMirror)editor.focus();
+
         var keycode = ev.which;
-        socket.emit('message', '/send/keydown '+keycode);
 
         if (keycode == 8){// backspace
-            // backspace is not supported for now.
+            // backspace is not supported for now. j
             ev.preventDefault();
         }
+       /* else if (keycode == 18){ // alt key
+          //  filterOn = !filterOn;
+            console.log("filteron:" + filterOn);
+            if (filterOn){
+                level_reverb.disconnect(0.001);
+                level_reverb.connect(filter);
+                filter.connect(compressor);
+            }else{
+                filter.disconnect(0.001);
+                level_reverb.disconnect(0.001);
+                level_reverb.connect(compressor);
+            }
+        }*/
         else if (keycode == 93 || keycode == 18 || keycode == 92){ // right command key
           pageContent[currentPage] = editor.getDoc().getValue();
           currentPage++;
@@ -842,7 +963,19 @@ if(enableSound){
             geoindex = 0;
             if (currentPage == 2){
                 //
+                var source = context.createBufferSource();
+                var gain = context.createGain();
+                gain.gain.value = 0.4;
+                source.buffer = buffers['tick1'];
+                //source.playbackRate.value = 1 + Math.random()*2;
+                source.playbackRate.value = 0.3;
+                source.connect(gain);
+                gain.connect(compressor);
+                source.start(0);
 
+                chatter.start(0);
+                reverseGate.params.mix.set(0.0,context.currentTime,1);
+                reverseGate.params.mix.set(1.0,context.currentTime + 90,1);
 
             }
             else if (currentPage == 1){ // the 2nd page
@@ -859,6 +992,11 @@ if(enableSound){
                 uniforms.time.value = 0;
                 //for (var i=0; i< numPage-1; i++)
                 books[1].material = shaderMaterial;
+                if(!heartbeat.loop){
+                  heartbeat.start(0);
+                  heartbeat.loop = true;
+                }
+
 
             }
 
@@ -868,7 +1006,7 @@ if(enableSound){
 
             var dur = (keyInterval+0.1) / (keyIntervalCnt+0.1) / 4;
             noiseBurstadsr.play(0,dur, dur, dur, dur,1.0,0.1);
-            // burst is needed for visualization
+
             noiseBurstOn = true;
             setTimeout(function(){
                 noiseBurstOn = false;
@@ -881,15 +1019,15 @@ if(enableSound){
                 noiseBurstadsr.node.gain.linearRampToValueAtTime(1.0, context.currentTime +8);
                 uniforms.time.value -= 0.1;
                 noiseBurstOn = true;
-                /* fade out is not needed
                 masterGain.gain.linearRampToValueAtTime(1.0,context.currentTime);
                 masterGain.gain.linearRampToValueAtTime(1.0,context.currentTime + 5);
                 masterGain.gain.linearRampToValueAtTime(0.0,context.currentTime + 12);
-                */
             }
         }
           if(DEBUG){
             $("#keydown_debug").html(keycode);
+    //        $("#start_down_debug").html(pos[0]);
+    //        $("#end_down_debug").html(pos[1]);
 
             keydown_debug_color_index++;
             keydown_debug_color_index%=randomcolor.length;
@@ -912,7 +1050,37 @@ if(enableSound){
           else if(keycode == 187){
             tdscale++;
           }
-
+          else if (keycode == 49){ // 1 pressed
+              pitch_convolver[pitch_convolver_id].buffer = buffers['june_A'];
+              return;
+          } else if (keycode == 50){ // 2 pressed
+              pitch_convolver[pitch_convolver_id].buffer = buffers['june_B'];
+              return;
+          }
+          else if (keycode == 51){ // 3 pressed
+              pitch_convolver[pitch_convolver_id].buffer = buffers['june_C'];
+              return;
+          }
+          else if (keycode == 52){ // 4 pressed
+              pitch_convolver[pitch_convolver_id].buffer = buffers['june_D'];
+              return;
+          }
+          else if (keycode == 53){ // 5 pressed
+              pitch_convolver[pitch_convolver_id].buffer = buffers['june_E'];
+              return;
+          }
+          else if (keycode == 54){ // 6 pressed
+              pitch_convolver[pitch_convolver_id].buffer = buffers['june_F'];
+              return;
+          }
+          else if (keycode == 55){ // 7 pressed
+              pitch_convolver[pitch_convolver_id].buffer = buffers['june_G'];
+              return;
+          }
+          else if (keycode == 56){ // 8 pressed
+              pitch_convolver[pitch_convolver_id].buffer = buffers['june_A1'];
+              return;
+          }
 
           return;
         }
@@ -931,7 +1099,14 @@ if(enableSound){
           var code = strPage[currentPage].charCodeAt(strPage[currentPage].length-1);
         }
 
+        if(keycode>=49 && keycode<=56){
+          //(delay, R, sustainlevel)
+          pitch_convolver_ADSR[pitch_convolver_id].noteOff(0,2,1);
+          pitch_convolver_id++;
+          pitch_convolver_id%=2;
+          pitch_convolver_ADSR[pitch_convolver_id].noteOn(0,1,0.1, 1, 1);
 
+        }
 
         if(keycode == 57&&ev.metaKey){
           DEBUG = !DEBUG;
@@ -943,7 +1118,14 @@ if(enableSound){
           rightMostXCoord = rightMostPosition*scaleX+offset;
         }
 
+
+
+
+
+
         if(!enableCodeMirror){
+
+
           var prevgeoindex = geoindex;
           geoindex++;
           geoindex%=2;
@@ -971,10 +1153,68 @@ if(enableSound){
                 // play drone sound
             console.log("space or enter : " + avgInterval + "(" + keyInterval + "," + keyIntervalCnt + ")");
 
+            if ( avgInterval > 0.4){
+                var randompitch = [26,27,28,29,29,34][getRandomInt(0,5)];
+                console.log("drone triggered : " + randompitch);
+                var osc = new Oscillator(randompitch, 'sawtooth');
+                var adsr = new ADSR();
+                osc.node.connect(adsr.node);
+                adsr.node.connect(reverb2);
 
+                osc.play(0);
+                osc.stop(context.currentTime +keyInterval);
+                var dur = keyInterval/4;
+                adsr.play(0,dur, dur, dur, dur,0.1,0.05);
+            }
             keyInterval = 0;
             keyIntervalCnt = 0;
         }
+        else if (keycode == 191){
+            state ++;
+            if (state == 1){
+
+               // reverseGate.set('mix', 1.0,context.currenTime + 10);
+
+                delay.params.mix.set(0.0,context.currentTime,1);
+                delay.params.mix.set(0.0,context.currentTime+60,1);
+                delay.params.mix.set(1.0,context.currentTime+90,1);
+                delay.params.mix.set(0.0,context.currentTime+120,1);
+
+                var gain_filterbank = context.createGain();
+                gain_filterbank.gain.value = 0.0;
+                noise.to(fbank).to(cverb).to(gain_filterbank);
+                chatter.to(fbank._inlet);
+
+                gain_filterbank.connect(compressor)
+                gain_filterbank.gain.linearRampToValueAtTime(0., context.currentTime);
+                gain_filterbank.gain.linearRampToValueAtTime(0.3, context.currentTime + 3);
+
+                cverb.set('output',0.3);
+
+
+            }
+        }
+
+
+
+        //gain.connect(pitch_convolver);
+        //  gain.connect(level_reverb);
+        // pitch_convolver.connect(compressor);
+        //    gain.connect(context.destination);
+/*
+        if(Math.random() > 0.95){
+          var randomPitch = 24 + getRandomInt(-3,12);
+
+          var osc = new Oscillator(randomPitch, 'triangle');
+          var adsr = new ADSR();
+          osc.node.connect(adsr.node);
+          adsr.node.connect(level_reverb);
+
+          osc.play(0);
+          osc.stop(context.currentTime + 3.2);
+          adsr.play(0,0.1,0.1,2,1);
+        }
+*/
 
         var currentTime = (new Date()).getTime();
         if (lastKeyTime == 0)
@@ -987,10 +1227,54 @@ if(enableSound){
         lastKeyTime = currentTime;
 
 
+        if (state%2== 1){ // alternate by question mark.
+            var source = context.createBufferSource();
+            source.buffer = buffers['tick1'];
+            //source.playbackRate.value = 1 + Math.random()*2;
+            var freqNum = keycode;
+            if(ev.shiftKey){
+              freqNum-=32;
+            }
+            source.playbackRate.value = 0.2 + (freqNum-65) / 60*4;
+            source.connect(reverseGate._inlet);
+            source.start(0);
+        }
+
+        if (currentPage == 2){ // the third page
+            var length = editor.getDoc().getValue().length;
+            var percent = WX.clamp(length/numCharPage[currentPage],0,1.0);
+            // slowly increase
+            equalPowerCrossfade(percent, chatter_filterGain, chatter_reverbGain, 0.5, 0.1);
+            currentOuput = noiseBurst.get('output');
+            noiseBurst.params.output.set(currentOuput, context.currentTime, 1);
+            currentOuput = percent * 0.1;
+            noiseBurst.params.output.set(currentOuput, context.currentTime + 0.1, 1);
+        }
+
         if (code == 10 || code == 13){ // enter or linebreak (carrige return)
             lineindex[currentPage] = editor.getDoc().lineCount()-1;
 
-          if (lineindex[currentPage] == 7 && currentPage == 0){ // thr fifth line the first page
+            fbank.set('scale', scaleModel[getRandomInt(0,3)].value, WX.now + 4, 2);
+           // fbank.set('pitch', fbank_pitchset[getRandomInt(0,3)]);
+            if (lineindex[currentPage] == 2 && currentPage == 0){ // the third line the first page
+              level_reverb.gain.linearRampToValueAtTime(0.0, context.currentTime )
+              level_reverb.gain.linearRampToValueAtTime(1.0, context.currentTime + 30)
+
+              var osc = new Oscillator(22, 'triangle');
+              var adsr = new ADSR();
+              osc.node.connect(adsr.node);
+              adsr.node.connect(level_reverb);
+
+              osc.play(0);
+              // osc.stop(context.currentTime + 300);
+              //adsr.play(0,30,120,30,120,0.05,0.025);
+              adsr.noteOn(0,30,600,0.07,0.03);
+              osc.node.detune.linearRampToValueAtTime(0.0, context.currentTime);
+              osc.node.detune.linearRampToValueAtTime(0.0, context.currentTime + 30);
+              osc.node.detune.linearRampToValueAtTime(900, context.currentTime + 120);
+              osc.node.detune.linearRampToValueAtTime(200, context.currentTime + 240);
+            }
+            else if (lineindex[currentPage] == 4 && currentPage == 0){ // thr fifth line the first page
                 var shaderMaterial = new THREE.ShaderMaterial({
                     uniforms : uniforms,
                     attributes : attributes,
@@ -1003,7 +1287,14 @@ if(enableSound){
                 for (var i=0; i< numPage; i++)
                     books[i].material = shaderMaterial;
 
+           }else if (lineindex[currentPage] == 7&& currentPage == 2){
+             if(!ending.loop){
+               ending.start(0);
+               ending.loop = true;
+             }
            }
+
+
         }
 
      //books[currentPage].geometry = geo[currentPage][geoindex];
@@ -1011,23 +1302,58 @@ if(enableSound){
 
      if (!pauseFlag) return;
      if (currentPage < 1) return;
+
+     if(pause_handle){
+       pause_handle.noteOff(1,0.1,0.5);
+       pause.stop(context.currentTime + 3)
+     }
+
+      pause = context.createBufferSource();
+      pause.loop = true;
+      pause_handle = new ADSR();
+      pause.connect(pause_handle.node);
+      pause_handle.node.connect(level_reverb);
+      var rn = Math.random();
+      if(rn < 0.5){
+        pause.buffer = buffers['pause1'];
+      }else {
+        pause.buffer = buffers['pause2'];
+      }
+      //source.playbackRate.value = 1 + Math.random()*2;
+      pause.playbackRate.value = (1 + (keycode%65) / 200*4)*0.2 * (keycode%4+1) ;
+      pause.start(context.currentTime + 3);
+      //pause_handle.noteOn(1,7,7, 0.3, 0);
+      pause_handle.play(3,12, 3, 3, 3,1.0,0.1)
     }
 
     window.onkeypress = function(ev){
       var keycode = ev.which;
+
       if(DEBUG){
-        $("#keypress_debug").html(keycode);
-        keypress_debug_color_index++;
-        keypress_debug_color_index%=randomcolor.length;
-        $("#keypress_debug").css("background-color", randomcolor[keypress_debug_color_index]);
-      }
-      socket.emit('message', '/send/keypress '+keycode);
+         $("#keypress_debug").html(keycode);
+           //        $("#start_down_debug").html(pos[0]);
+           //        $("#end_down_debug").html(pos[1]);
+         keypress_debug_color_index++;
+         keypress_debug_color_index%=randomcolor.length;
+         $("#keypress_debug").css("background-color", randomcolor[keypress_debug_color_index]);
+     }
     }
 
     var wheelHandler = function(ev) {
-        socket.emit('message', '/send/wheel '+ev.wheelDelta);
+      socket.emit('message', '/wheel '+ev.wheelDelta);
 
         var ds = (ev.detail < 0 || ev.wheelDelta > 0) ? (1/1.01) : 1.01;
+        if (ev.detail < 0 || ev.wheelDelta > 0) {
+          heartbeatGainValue += 0.01;
+          if(ending.loop)  endingGainValue -= 0.002;
+        }else{
+          heartbeatGainValue -= 0.01;
+          if(ending.loop)  endingGainValue += 0.002;
+        }
+
+        heartbeatGain.gain.value = WX.clamp(heartbeatGainValue,0,1);
+        endingGain.gain.value = WX.clamp(endingGainValue,0,1);
+
         var fov = camera.fov * ds;
         fov = Math.min(120, Math.max(1, fov));
         camera.fov = fov;
@@ -1040,9 +1366,9 @@ if(enableSound){
     var pitchListforDrone = [15,17,22,21,16,10];
     var pitchIndex=0;
     window.onmousemove = function(ev) {
-      socket.emit('message', '/send/mousemove '+ev.clientX+ ' ' + ev.clientY);
-
         if (down) {
+          socket.emit('message', '/mousedrag '+ev.clientX+ ' ' + ev.clientY);
+
             var dx = ev.clientX - sx;
             var dy = ev.clientY - sy;
       //      books[currentPage].rotation.x += dy/50.0;
@@ -1053,21 +1379,77 @@ if(enableSound){
             sx += dx;
             sy += dy;
             //hellow
+            if (drone){
+              drone.detune(dy);
+              if (dx > 0){
+                panNode.pan.value += 0.05;
+              }
+              else if (dx < 0){
+                panNode.pan.value -= 0.05;
+              }
+              if (panNode.pan.value >=1){
+                panNode.pan.value = 1;
+              }else if (panNode.pan.value <= -1)
+              {
+                panNode.pan.value = -1;
+              }
 
+            }
+
+/*
+            if (filterOn){
+                var minValue = 40;
+                var maxValue = context.sampleRate / 4;
+                // Logarithm (base 2) to compute how many octaves fall in the range.
+                var numberOfOctaves = Math.log(maxValue / minValue) / Math.LN2;
+                // Compute a multiplier from 0 to 1 based on an exponential scale.
+                var multiplier = Math.pow(2, numberOfOctaves * ( ev.clientX/1024/2 - 1.0));
+                // Get back to the frequency value between min and max.
+                filter.frequency.value = drone.frequency * multiplier;
+            }
+*/
+        }
+        else{
+          socket.emit('message', '/mousemove '+ev.clientX+ ' ' + ev.clientY);
         }
     };
     var reached = false
     window.onmousedown = function (ev){
-        socket.emit('message', '/send/mouseDown '+ev.clientX+ ' ' + ev.clientY);
+      socket.emit('message', '/mousedown '+ev.clientX+ ' ' + ev.clientY);
+
        if (ev.target == renderer.domElement) {
             down = true;
             sx = ev.clientX;
             sy = ev.clientY;
        }
+//function ScissorVoice(noteNum, numOsc, oscType, detune){
+        if ( currentPage >= 1 || reached){
+          reached = true;
+            if (drone){
+                drone.output.noteOff(0,1,drone.maxGain*2.0);
+                drone.stop(context.currentTime + 1);
+            }
+           drone = new ScissorVoice(pitchListforDrone[pitchIndex]+12,getRandomInt(7,10),"triangle", 12);
+           //drone = new ScissorVoice(pitchListforDrone[pitchIndex],getRandomInt(3,10),"triangle", [3,5,7,12][getRandomInt(0,3)]);
+           drone.connect(panNode);
+           panNode.pan.value = 0;
+           drone.detune(getRandomInt(0,100));
+
+           drone.output.noteOn(0,1,6000,drone.maxGain*5.0,drone.maxGain*5.0);
+           pitchIndex+=getRandomInt(0,1);
+           pitchIndex %= pitchListforDrone.length;
+        }
     };
-    window.onmouseup = function(){
+    window.onmouseup = function(ev){
         down = false;
-        socket.emit('message', '/send/mouseUp'+ev.clientX+ ' ' + ev.clientY);
+        socket.emit('message', '/mouseUp'+ev.clientX+ ' ' + ev.clientY);
+
+        if ( drone && currentPage >= 1)
+        { // ADSR.prototype.noteOff= function(delay, R, sustainlevel){
+            drone.output.noteOff(0,1,drone.maxGain);
+            drone.stop(context.currentTime + 1);
+            delete drone;
+        }
     };
 
 
@@ -1083,7 +1465,7 @@ if(enableSound){
       var added = change.text.join('\n').length>0
       var removed = change.removed.join('\n').length>0
 
-      if (editor.getDoc().lineCount() <=11 && currentPage == 0)
+      if (editor.getDoc().lineCount() <=8 && currentPage == 0)
         volume = 0;
       sizeFactor = volume;
 
@@ -1096,6 +1478,8 @@ if(enableSound){
 
       // take care of removed first.
       if(removed){
+        socket.emit('message', '/removed/'+change.from.line+"/" + change.from.ch+"/" +change.removed.join('\n'));
+
         // if nothing is added, we need to move
         // if anything is added, we do not need to move as next if block will set it in a correct position.
         for (var j=startCh; j<startCh + change.removed[0].length; j++){
@@ -1163,6 +1547,8 @@ if(enableSound){
       }
 
       if(added){
+        socket.emit('message', '/added/'+change.from.line+"/" + change.from.ch+"/" +change.text.join('\n'));
+
         if(cmGrid[currentPage][startLine]=== undefined){
           cmGrid[currentPage][startLine] = [];
         }
@@ -1220,15 +1606,112 @@ if(enableSound){
           }
         }
 
+// sanity check
+
+/*
+
+        for (var i=1; i< change.text.length-1; i++){
+          for (var j=0; j<change.text[i].length; j++){
+            addLetterCodeMirror(startLine+i, j, {index:pageStrIndex[currentPage], sizeFactor:sizeFactor}, change.text[i][j]);
+          }
+        }
+
+        if (startLine != endLine){
+          for (var j=0; j<endCh; j++){
+            removeLetterCodeMirror(cmGrid[endLine][j].index);
+          }
+        }
+        // shift any letter if needed:
+
+        if (change.text.length==1 && cmGrid[startLine] && change.text[0].length>0){// for the first line we need to shift any following letters.
+          if (startCh < cmGrid[startLine].length){
+            for (var i=startCh; i<cmGrid[currentPage][startLine].length; i++){
+              shiftLetterHorizontallyCodeMirror(cmGrid[currentPage][startLine][i],i,change.text[0].length);
+            }
+          }else if (startCh > cmGrid[currentPage][startLine].length){
+            console.error("ASSERT : startCh > cmGrid[currentPage][startLine].length(",startCh ,">", cmGrid[currentPage][startLine].length,")")
+          }else{
+            console.log("no shift needed");
+          }
+        }
+        else if (change.text.length>1){
+          // there are multiple lines.
+          // shift the following lines
+          for(var i=startLine+1; i< cmGrid[currentPage].length; i++){
+            for (var j=0; j< cmGrid[currentPage][i].length; j++){
+              shiftLetterVerticallyCodeMirror(cmGrid[currentPage][i][j],i,change.text.length-1);
+            }
+          }
+
+          if (startCh < cmGrid[currentPage][startLine].length){
+            for (var i=startCh; i<cmGrid[currentPage][startLine].length; i++){
+              shiftLetterVerticallyCodeMirror(cmGrid[currentPage][startLine][i],startLine,change.text.length-1);
+              shiftLetterHorizontallyCodeMirror(cmGrid[currentPage][startLine][i],i-startCh,change.text[change.text.length-1].length);
+            }
+          }else if (startCh > cmGrid[currentPage][startLine].length){
+            console.error("ASSERT : startCh > cmGrid[currentPage][startLine].length(",startCh ,">", cmGrid[currentPage][startLine].length,")")
+          }else{
+            console.log("no shift needed");
+          }
+        }
+
+
+        for(var index=0; index< change.text.length; index++){
+          var line = change.text[index];
+          var ch=0;
+          if(index == 0){
+            ch = startCh;
+          }else{
+            cmGrid[currentPage].splice(startLine,0,[]); // from the 2nd line , we need to push
+          }
+          for(var j=0; j< line.length; j++){
+            ch += j;
+
+            // maintain cmGrid[currentPage] before adding letter.
+
+            var sizeFactor = 0;
+            cmGrid[currentPage][index+startLine].splice(ch,0,{index: pageStrIndex[currentPage], sizeFactor: sizeFactor});
+
+            addLetterCodeMirror(startLine + index, ch, {index:pageStrIndex[currentPage], sizeFactor:sizeFactor}, line[j]);
+            pageStrIndex[currentPage]++;
+          }
+
+        }*/
       }//
 
       books[currentPage].geometry = geo[currentPage][geoindex];
+/*
 
+      if (instance.getDoc().lineCount() != cmGrid[currentPage].length && !(instance.getDoc().lineCount()==1&&cmGrid[currentPage].length==0)){
+
+        console.error("line does not match");
+        debugger;
+      }
+
+      if(!(instance.getDoc().lineCount()==1&&cmGrid[currentPage].length==0)){
+        for (var i=0; i<instance.getDoc().lineCount(); i++){
+          if(instance.getDoc().getLine(i).length!= cmGrid[currentPage][i].length){
+            console.error("line", i, "doesnot match");
+            debugger;
+          }
+          for (var j=0; j<instance.getDoc().getLine(i).length; j++){
+            if(instance.getDoc().getLine(i)[j]!= cmGrid[currentPage][i][j].char){
+              console.error("character", i, "doesnot match");
+              debugger;
+            }
+          }
+        }
+      }
+
+*/
 
     };
     if(enableCodeMirror){
         editor.on("change", changeCodeMirrorFunc);
     }
+
+    //editor.on("cursorActivity", cursorCodeMirrorFunc);
+    //editor.on("scroll", viewPortchangeCodeMirrorFunc);
 
 
 
