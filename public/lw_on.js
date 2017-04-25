@@ -9,12 +9,6 @@ socket.on('connect_failed', function(obj){
 });
 
 
-socket.on('message2', function(obj) {
-  var osc_received = document.getElementById("osc_received");
-  if(osc_received)
-    osc_received.innerHTML = obj;
-  console.log(obj);
-});
 
 
 socket.on('connect', function() {
@@ -1338,9 +1332,14 @@ if(enableSound){
          $("#keypress_debug").css("background-color", randomcolor[keypress_debug_color_index]);
      }
     }
-
+    var zoom = function(ds){
+      var fov = camera.fov * ds;
+      fov = Math.min(120, Math.max(1, fov));
+      camera.fov = fov;
+      camera.updateProjectionMatrix();
+    }
     var wheelHandler = function(ev) {
-      socket.emit('message', '/wheel '+ev.wheelDelta);
+      socket.emit('message', '/wheel/'+ev.wheelDelta);
 
         var ds = (ev.detail < 0 || ev.wheelDelta > 0) ? (1/1.01) : 1.01;
         if (ev.detail < 0 || ev.wheelDelta > 0) {
@@ -1353,13 +1352,48 @@ if(enableSound){
 
         heartbeatGain.gain.value = WX.clamp(heartbeatGainValue,0,1);
         endingGain.gain.value = WX.clamp(endingGainValue,0,1);
-
-        var fov = camera.fov * ds;
-        fov = Math.min(120, Math.max(1, fov));
-        camera.fov = fov;
-        camera.updateProjectionMatrix();
+        zoom(ds);
         ev.preventDefault();
+
     };
+
+    socket.on('message2', function(obj) {
+      var osc_received = document.getElementById("osc_received");
+      if(osc_received)
+        osc_received.innerHTML = obj;
+      console.log(obj);
+      if(obj[0] == "/zoomin"){
+        zoom(1.01);
+      }else if (obj[0] == "/zoomout"){
+        zoom(1/1.01);
+      }else if (obj[0] == "/camrotate"){
+        if(obj[1])
+          camera.rotation.x += obj[1]/500 * (camera.fov/45);
+        if(obj[2])
+          camera.rotation.y += obj[2]/500 * (camera.fov/45);
+        if(obj[3])
+          camera.rotation.z += obj[3]/500 * (camera.fov/45);
+      }
+      else if (obj[0] == "/camrotate"){
+        if(obj[1])
+          camera.rotation.x += obj[1]/500 * (camera.fov/45);
+        if(obj[2])
+          camera.rotation.y += obj[2]/500 * (camera.fov/45);
+        if(obj[3])
+          camera.rotation.z += obj[3]/500 * (camera.fov/45);
+      }else if(obj[0] == "/camtranslate"){
+        if(obj[1])
+          camera.position.x += obj[1]/10;
+        if(obj[2])
+          camera.position.y += obj[2]/10;
+        if(obj[3])
+          camera.position.z += obj[3]/10;
+      }
+
+    });
+
+
+
     window.addEventListener('DOMMouseScroll', wheelHandler, false);
     window.addEventListener('mousewheel', wheelHandler, false);
     var drone;
@@ -1367,13 +1401,13 @@ if(enableSound){
     var pitchIndex=0;
     window.onmousemove = function(ev) {
         if (down) {
-          socket.emit('message', '/mousedrag '+ev.clientX+ ' ' + ev.clientY);
+          socket.emit('message', '/mousedrag/'+ev.clientX+ '/' + ev.clientY);
 
             var dx = ev.clientX - sx;
             var dy = ev.clientY - sy;
       //      books[currentPage].rotation.x += dy/50.0;
     //        books[currentPage].rotation.y += dx/50.0;
-            camera.rotation.y += dx/500 * (camera.fov/45);;
+            camera.rotation.y += dx/500 * (camera.fov/45);
             //camera.rotation.y += dx/500 * (camera.fov/45);;
             camera.rotation.x += dy/500 * (camera.fov/45);
             sx += dx;
@@ -1393,29 +1427,15 @@ if(enableSound){
               {
                 panNode.pan.value = -1;
               }
-
             }
-
-/*
-            if (filterOn){
-                var minValue = 40;
-                var maxValue = context.sampleRate / 4;
-                // Logarithm (base 2) to compute how many octaves fall in the range.
-                var numberOfOctaves = Math.log(maxValue / minValue) / Math.LN2;
-                // Compute a multiplier from 0 to 1 based on an exponential scale.
-                var multiplier = Math.pow(2, numberOfOctaves * ( ev.clientX/1024/2 - 1.0));
-                // Get back to the frequency value between min and max.
-                filter.frequency.value = drone.frequency * multiplier;
-            }
-*/
         }
         else{
-          socket.emit('message', '/mousemove '+ev.clientX+ ' ' + ev.clientY);
+          socket.emit('message', '/mousemove/'+ev.clientX+ '/' + ev.clientY);
         }
     };
     var reached = false
     window.onmousedown = function (ev){
-      socket.emit('message', '/mousedown '+ev.clientX+ ' ' + ev.clientY);
+      socket.emit('message', '/mousedown/'+ev.clientX+ '/' + ev.clientY);
 
        if (ev.target == renderer.domElement) {
             down = true;
@@ -1442,7 +1462,7 @@ if(enableSound){
     };
     window.onmouseup = function(ev){
         down = false;
-        socket.emit('message', '/mouseUp'+ev.clientX+ ' ' + ev.clientY);
+        socket.emit('message', '/mouseUp/'+ev.clientX+ '/' + ev.clientY);
 
         if ( drone && currentPage >= 1)
         { // ADSR.prototype.noteOff= function(delay, R, sustainlevel){
