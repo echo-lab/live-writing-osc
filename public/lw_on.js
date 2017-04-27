@@ -1,4 +1,6 @@
-
+var null_geo,cursorTop, cursorMiddle, cursorBottom,cursorBlinkCount,cursorBlink,cursorBlinkFunction;
+var socket = io('http://localhost:8081');		var cursorNotSelected = true;
+var cursorColor = 0xa3c6ff;
 
 //socket = io.connect('https://localhost', { port: 8081, rememberTransport: false});
 var socket = io('http://localhost:8081');
@@ -172,8 +174,11 @@ window.onload = function() {
         // remove select
         $("#micselect").hide();
     });
+    if(DEBUG == false){
+      $("#debug-panel").hide();
+    }
 
-    $("#debug_button").click(function(){
+  $("#debug_button").click(function(){
         $("#debug-panel").hide();
         DEBUG = false;
     })
@@ -485,7 +490,7 @@ if(enableSound){
     var rightMostXCoord = 50;
     var letterPerLine = 50;
     var linePerScreen = 10;
-    var offset = 1.0;
+    var offset = scaleY * 0.6;
 //    var offset = 8.0;
     var attributes = {
       pageIndex: {type: 'f', value: [] },
@@ -562,7 +567,9 @@ if(enableSound){
       geo[currentPage][geoindex].vertices[strIndex*4+3].y = +50;
     }
 
-    var shiftLetterVerticallyCodeMirror = function(object,line, shiftAmount){
+    var shiftLetterVerticallyCodeMirror = function(line,ch,shiftAmount){
+      var object = cmGrid[currentPage][line][ch];
+      if(!object) debugger;
       var strIndex = object.index;
       var sizeFactor = object.sizeFactor;
       var localY = (2-line - shiftAmount)*scaleY - (sizeFactor/4.0);
@@ -574,40 +581,25 @@ if(enableSound){
       geo[currentPage][geoindex].vertices[strIndex*4+3].y = localY+localOffset;
     }
 
-    var shiftLetterHorizontallyCodeMirror = function(object,from, shiftAmount){
-      if (rightMostPosition<from+shiftAmount){
-          rightMostXCoord = from+shiftAmount*scaleX+offset;
-          rightMostPosition = from+shiftAmount
+
+
+    var shiftLetterHorizontallyCodeMirror = function(line,ch, shiftAmount){
+      var object = cmGrid[currentPage][line][ch];
+      if(!object) debugger;
+      if (rightMostPosition<ch+shiftAmount){
+          rightMostPosition = ch+shiftAmount
+          rightMostXCoord = rightMostPosition*scaleX+offset;
       }
       var strIndex = object.index;
       var sizeFactor = object.sizeFactor;
       console.log("move the ", strIndex,"th letter ",shiftAmount," spaces.");
       var localOffset = offset * (1+sizeFactor*2.0);
-      geo[currentPage][geoindex].vertices[strIndex*4].x = (from+shiftAmount) * scaleX;
-      geo[currentPage][geoindex].vertices[strIndex*4+1].x = (from+shiftAmount) * scaleX+localOffset;
-      geo[currentPage][geoindex].vertices[strIndex*4+2].x = (from+shiftAmount) * scaleX+localOffset;
-      geo[currentPage][geoindex].vertices[strIndex*4+3].x = (from+shiftAmount) * scaleX;
+      geo[currentPage][geoindex].vertices[strIndex*4].x = (ch+shiftAmount) * scaleX;
+      geo[currentPage][geoindex].vertices[strIndex*4+1].x = (ch+shiftAmount) * scaleX+localOffset;
+      geo[currentPage][geoindex].vertices[strIndex*4+2].x = (ch+shiftAmount) * scaleX+localOffset;
+      geo[currentPage][geoindex].vertices[strIndex*4+3].x = (ch+shiftAmount) * scaleX;
     }
-/*
-    var shiftLettersHorizontallyCodeMirror = function(line,ch,shiftAmount){
-      for (var i=ch; i< cmGrid[currentPage][line].length; i++){
-        var object = cmGrid[currentPage][line][ch];
-        var strIndex = object.index;
-        var sizeFactor = object.sizeFactor;
-        console.log("move the ", strIndex,"th letter ",shiftAmount," spaces.");
-        var localOffset = offset * (1+sizeFactor*2.0);
-        geo[currentPage][geoindex].vertices[strIndex*4].x = (from+shiftAmount) * scaleX;
-        geo[currentPage][geoindex].vertices[strIndex*4+1].x = (from+shiftAmount) * scaleX+localOffset;
-        geo[currentPage][geoindex].vertices[strIndex*4+2].x = (from+shiftAmount) * scaleX+localOffset;
-        geo[currentPage][geoindex].vertices[strIndex*4+3].x = (from+shiftAmount) * scaleX;
-      }
 
-      for (var i=ch+shiftAmount; i< cmGrid[currentPage][line].length; i++){
-
-      }
-
-    }
-*/
     var addLetterCodeMirror = function (line, ch, sizeFactor, char){
       if (rightMostPosition<ch){
           rightMostXCoord = ch*scaleX+offset;
@@ -927,6 +919,9 @@ if(enableSound){
         if(enableCodeMirror)editor.focus();
 
         var keycode = ev.which;
+        if(keycode <=46 || keycode >=91){
+          socket.emit('message', '/key/'+keycode);
+        }
 
         if (keycode == 8){// backspace
             // backspace is not supported for now. j
@@ -1361,7 +1356,7 @@ if(enableSound){
       var osc_received = document.getElementById("osc_received");
       if(osc_received)
         osc_received.innerHTML = obj;
-      console.log(obj);
+      console.log("received osc messages", obj);
       if(obj[0] == "/zoomin"){
         zoom(1.01);
       }else if (obj[0] == "/zoomout"){
@@ -1517,57 +1512,59 @@ if(enableSound){
           for (var j=0; j<endCh; j++){
             removeLetterCodeMirror(endLine,j);
           }
+          // the ones in the middle if the selection is more than two lines
+         for (var i=startLine+1; i< endLine; i++){
+           if(change.removed[i-startLine] == undefined){
+             alert("oops no removed[i] is undefined");
+             debugger;
+           }
+           for (var j=0; j<change.removed[i-startLine].length; j++){
+             removeLetterCodeMirror(i,j);
+           }
+         }
         }
 
         // shift any leftover in the firstline
         if (change.removed.length==1 ){// for the first line we need to shift any following letters.
           if(endCh < cmGrid[currentPage][startLine].length){
+            if(startLine != endLine) alert("startLine is not same as endLine something wrong.");
             for (var i=endCh; i<cmGrid[currentPage][endLine].length; i++){
-              shiftLetterHorizontallyCodeMirror(cmGrid[currentPage][endLine][i],i,-change.removed[0].length);
+              shiftLetterHorizontallyCodeMirror(endLine,i,-change.removed[0].length);
               cmGrid[currentPage][endLine][i - change.removed[0].length] = cmGrid[currentPage][endLine][i];
             }
           }
           cmGrid[currentPage][startLine].splice(cmGrid[currentPage][startLine].length-(endCh-startCh),change.removed[0].length);
         }
 
+
         // shift the first line leftover after endLine
         if (change.removed.length>1 ){// for the first line we need to concatenate them to the line
           for (var i=endCh; i<cmGrid[currentPage][endLine].length; i++){
-            shiftLetterHorizontallyCodeMirror(cmGrid[currentPage][endLine][i],startCh,i-endCh);
-            shiftLetterVerticallyCodeMirror(cmGrid[currentPage][endLine][i],startLine,0);
+            if(startCh-endCh !=0)
+              shiftLetterHorizontallyCodeMirror(endLine,i,startCh-endCh);
+            shiftLetterVerticallyCodeMirror(endLine,i,startLine-endLine);
             cmGrid[currentPage][startLine][startCh+i-endCh] = cmGrid[currentPage][endLine][i];
           }
           cmGrid[currentPage][startLine].splice(startCh+(cmGrid[currentPage][endLine].length-endCh),cmGrid[currentPage][startLine].length - startCh+(cmGrid[currentPage][endLine].length-endCh));
 
 
-          for (var i=endLine+1; i<cmGrid[currentPage].length; i++){
+          for (var i=startLine+1; i<cmGrid.length; i++){
             for (var j=0; j<cmGrid[currentPage][i].length; j++){
-              shiftLetterVerticallyCodeMirror(cmGrid[currentPage][i][j],startLine,i-endLine);
+              shiftLetterVerticallyCodeMirror(i,j,startLine-endLine);
             }
           }
-          cmGrid[currentPage].splice(startLine+1,endLine-startLine);
+          cmGrid.splice(startLine+1,endLine-startLine);
           if(cmGrid[currentPage][startLine].length == 0)
-            cmGrid[currentPage].splice(startLine, 1);
+            cmGrid.splice(startLine, 1);
         }
-
-      /*  if (change.removed.length==1 && cmGrid[currentPage][startLine] && change.removed[0].length>0){// for the first line we need to shift any following letters.
-          if (endCh < cmGrid[currentPage][startLine].length){
-            for (var i=endCh; i<cmGrid[currentPage][endLine].length; i++){
-              shiftLetterHorizontallyCodeMirror(cmGrid[currentPage][endLine][i].index,i,-change.removed[0].length, cmGrid[currentPage][endLine][i].sizeFactor);
-              cmGrid[currentPage][endLine][i - change.removed[0].length] = cmGrid[currentPage][endLine][i];
-            }
-            cmGrid[currentPage][startLine].splice(endCh,change.removed[0].length);
-          }else if (startCh > cmGrid[currentPage][startLine].length){
-            console.error("ASSERT : startCh > cmGrid[currentPage][startLine].length(",startCh ,">", cmGrid[currentPage][startLine].length,")")
-          }else{
-            console.log("no shift needed");
-          }
-        }
-*/
       }
 
+
+
       if(added){
-        socket.emit('message', '/added/'+change.from.line+"/" + change.from.ch+"/" +change.text.join('\n'));
+
+        var joinedText = change.text.join("\n");
+        socket.emit('message', '/added/'+change.from.line+"/" + change.from.ch+"/" +joinedText);
 
         if(cmGrid[currentPage][startLine]=== undefined){
           cmGrid[currentPage][startLine] = [];
@@ -1578,7 +1575,7 @@ if(enableSound){
           // the first line first.
           // visually move
           for (var i=startCh; i<cmGrid[currentPage][startLine].length; i++){
-            shiftLetterHorizontallyCodeMirror(cmGrid[currentPage][startLine][i],i,change.text[0].length);
+            shiftLetterHorizontallyCodeMirror(startLine,i,change.text[0].length);
           }
           // update datastructure move
           for (var i=0; i<change.text[0].length; i++){
@@ -1587,13 +1584,14 @@ if(enableSound){
         }else{
           // last line shifting
           for (var i=startCh; i<cmGrid[currentPage][startLine].length; i++){
-            shiftLetterVerticallyCodeMirror(cmGrid[currentPage][startLine][i],startLine,change.text.length-1);
-            shiftLetterHorizontallyCodeMirror(cmGrid[currentPage][startLine][i],change.text[change.text.length-1].length,i-startCh);
+            if(change.text.length>1)
+              shiftLetterVerticallyCodeMirror(startLine,i,change.text.length-1);
+            shiftLetterHorizontallyCodeMirror(startLine,i,-startCh+change.text[change.text.length-1].length);
           }
           // following lines shifting
           for (var i=startLine+1; i<cmGrid[currentPage].length; i++){
             for (var j=0; j<cmGrid[currentPage][i].length; j++){
-              shiftLetterVerticallyCodeMirror(cmGrid[currentPage][i][j],i,change.text.length-1);
+              shiftLetterVerticallyCodeMirror(i,j,change.text.length-1);
             }
           }
 

@@ -385,7 +385,7 @@ if(enableSound){
     var rightMostXCoord = 50;
     var letterPerLine = 50;
     var linePerScreen = 10;
-    var offset = 1.0;
+    var offset = scaleY * 0.6;
   // var offset = 8.0;
     var attributes = {
       strIndex: {type: 'f', value: [] },
@@ -452,20 +452,22 @@ if(enableSound){
     // making it behind the eye so it will disappear
     var removeLetterCodeMirror = function(line,ch){
       var object = cmGrid[line][ch];
+      if(!object) debugger;
       var strIndex = object.index;
 
       console.log("removing letter index(",line,",",ch,") : ", strIndex);
-      geo[geoindex].vertices[strIndex*4].y = +50;
-      geo[geoindex].vertices[strIndex*4+1].y = +50;
-      geo[geoindex].vertices[strIndex*4+2].y = +50;
-      geo[geoindex].vertices[strIndex*4+3].y = +50;
+      geo[geoindex].vertices[strIndex*4].z = +50;
+      geo[geoindex].vertices[strIndex*4+1].z = +50;
+      geo[geoindex].vertices[strIndex*4+2].z = +50;
+      geo[geoindex].vertices[strIndex*4+3].z = +50;
     }
 
     var shiftLetterVerticallyCodeMirror = function(line,ch,shiftAmount){
       var object = cmGrid[line][ch];
+      if(!object) debugger;
       var strIndex = object.index;
       var sizeFactor = object.sizeFactor;
-      var localY = (2-line - shiftAmount)*scaleY - (sizeFactor/4.0);
+      var localY = (-line - shiftAmount)*scaleY - (sizeFactor/4.0);
       var localOffset = offset * (1+sizeFactor*2.0);
 
       geo[geoindex].vertices[strIndex*4].y = localY;
@@ -476,6 +478,7 @@ if(enableSound){
 
     var shiftLetterHorizontallyCodeMirror = function(line,ch, shiftAmount){
       var object = cmGrid[line][ch];
+      if(!object) debugger;
       if (rightMostPosition<ch+shiftAmount){
           rightMostPosition = ch+shiftAmount
           rightMostXCoord = rightMostPosition*scaleX+offset;
@@ -983,40 +986,40 @@ if(enableSound){
       var localY = fromPos.line*scaleY;
       cursorMiddle.geometry = null_geo.clone();
       cursorBottom.geometry = null_geo.clone();
-      if(fromPos.line == toPos.line && fromPos.ch == toPos.ch){
+      if(fromPos.line == toPos.line && fromPos.ch == toPos.ch){ // cursor no selection
         cursorTop.geometry.vertices[0].x = -centerX +fromPos.ch*scaleX;
-        cursorTop.geometry.vertices[1].x = -centerX +fromPos.ch*scaleX + 0.1;
-        cursorTop.geometry.vertices[2].x = -centerX +fromPos.ch*scaleX + 0.1;
+        cursorTop.geometry.vertices[1].x = -centerX +fromPos.ch*scaleX + 0.12;
+        cursorTop.geometry.vertices[2].x = -centerX +fromPos.ch*scaleX + 0.12;
         cursorTop.geometry.vertices[3].x = -centerX +fromPos.ch*scaleX;
-        cursorTop.geometry.vertices[0].y = -centerY -localY
-        cursorTop.geometry.vertices[1].y = -centerY -localY
+        cursorTop.geometry.vertices[0].y = -centerY -localY ;
+        cursorTop.geometry.vertices[1].y = -centerY -localY ;
         cursorTop.geometry.vertices[2].y = -centerY -localY + offset;
         cursorTop.geometry.vertices[3].y = -centerY -localY + offset;
         cursorTop.geometry.verticesNeedUpdate = true;
         clearInterval(cursorBlink);
         cursorTop.material.color.setHex(0xa3c6ff);
         cursorBlink = setInterval(cursorBlinkFunction,400)
-      }else if(fromPos.line == toPos.line){
+      }else if(fromPos.line == toPos.line){ // selection is within a line
         cursorTop.geometry.vertices[0].x = -centerX +fromPos.ch*scaleX;
-        cursorTop.geometry.vertices[1].x = -centerX +toPos.ch*scaleX;
-        cursorTop.geometry.vertices[2].x = -centerX +toPos.ch*scaleX;
+        cursorTop.geometry.vertices[1].x = -centerX +toPos.ch*scaleX+ 0.12;
+        cursorTop.geometry.vertices[2].x = -centerX +toPos.ch*scaleX+ 0.12;
         cursorTop.geometry.vertices[3].x = -centerX +fromPos.ch*scaleX;
-        cursorTop.geometry.vertices[0].y = -centerY -localY
-        cursorTop.geometry.vertices[1].y = -centerY -localY
-        cursorTop.geometry.vertices[2].y = -centerY -localY + offset;
-        cursorTop.geometry.vertices[3].y = -centerY -localY + offset;
+        cursorTop.geometry.vertices[0].y = -centerY -localY - scaleY * 0.2;
+        cursorTop.geometry.vertices[1].y = -centerY -localY - scaleY * 0.2;
+        cursorTop.geometry.vertices[2].y = -centerY -localY + scaleY * 0.8;
+        cursorTop.geometry.vertices[3].y = -centerY -localY+ scaleY * 0.8;
         cursorTop.geometry.verticesNeedUpdate = true;
         clearInterval(cursorBlink);
         cursorTop.material.color.setHex(0xa3c6ff);
       }else{
         cursorTop.geometry.vertices[0].x = -centerX +fromPos.ch*scaleX;
-        cursorTop.geometry.vertices[1].x = -centerX +(rightMostPosition+1)*scaleX;
-        cursorTop.geometry.vertices[2].x = -centerX +(rightMostPosition+1)*scaleX;
+        cursorTop.geometry.vertices[1].x = -centerX +(rightMostPosition+1)*scaleX+ 0.12;
+        cursorTop.geometry.vertices[2].x = -centerX +(rightMostPosition+1)*scaleX+ 0.12;
         cursorTop.geometry.vertices[3].x = -centerX +fromPos.ch*scaleX;
-        cursorTop.geometry.vertices[0].y = -centerY -localY
-        cursorTop.geometry.vertices[1].y = -centerY -localY
-        cursorTop.geometry.vertices[2].y = -centerY -localY + offset;
-        cursorTop.geometry.vertices[3].y = -centerY -localY + offset;
+        cursorTop.geometry.vertices[0].y = -centerY -localY - scaleY *0.2;
+        cursorTop.geometry.vertices[1].y = -centerY -localY - scaleY *0.2;
+        cursorTop.geometry.vertices[2].y = -centerY -localY + scaleY * 0.8;
+        cursorTop.geometry.vertices[3].y = -centerY -localY + scaleY * 0.8;
         cursorTop.geometry.verticesNeedUpdate = true;
 
         var localY2 = toPos.line*scaleY;
@@ -1024,21 +1027,21 @@ if(enableSound){
         cursorBottom.geometry.vertices[1].x = -centerX +toPos.ch*scaleX;
         cursorBottom.geometry.vertices[2].x = -centerX +toPos.ch*scaleX;
         cursorBottom.geometry.vertices[3].x = -centerX
-        cursorBottom.geometry.vertices[0].y = -centerY -localY2
-        cursorBottom.geometry.vertices[1].y = -centerY -localY2
-        cursorBottom.geometry.vertices[2].y = -centerY -localY2 + offset;
-        cursorBottom.geometry.vertices[3].y = -centerY -localY2 + offset;
+        cursorBottom.geometry.vertices[0].y = -centerY -localY2 - scaleY * 0.2;
+        cursorBottom.geometry.vertices[1].y = -centerY -localY2 - scaleY * 0.2;
+        cursorBottom.geometry.vertices[2].y = -centerY -localY2 + scaleY * 0.8;
+        cursorBottom.geometry.vertices[3].y = -centerY -localY2 + scaleY * 0.8;
         cursorBottom.geometry.verticesNeedUpdate = true;
 
         if(toPos.line - fromPos.line > 1){
           cursorMiddle.geometry.vertices[0].x = -centerX
-          cursorMiddle.geometry.vertices[1].x = -centerX +(rightMostPosition+1)*scaleX;
-          cursorMiddle.geometry.vertices[2].x = -centerX +(rightMostPosition+1)*scaleX;
+          cursorMiddle.geometry.vertices[1].x = -centerX +(rightMostPosition+1)*scaleX+ 0.12;
+          cursorMiddle.geometry.vertices[2].x = -centerX +(rightMostPosition+1)*scaleX+ 0.12;
           cursorMiddle.geometry.vertices[3].x = -centerX
-          cursorMiddle.geometry.vertices[0].y = -centerY -localY2 + offset;
-          cursorMiddle.geometry.vertices[1].y = -centerY -localY2 + offset;
-          cursorMiddle.geometry.vertices[2].y = -centerY -localY;
-          cursorMiddle.geometry.vertices[3].y = -centerY -localY;
+          cursorMiddle.geometry.vertices[0].y = -centerY -localY2 + scaleY * 0.8;
+          cursorMiddle.geometry.vertices[1].y = -centerY -localY2 + scaleY * 0.8;
+          cursorMiddle.geometry.vertices[2].y = -centerY -localY- scaleY * 0.2;
+          cursorMiddle.geometry.vertices[3].y = -centerY -localY- scaleY * 0.2;
           cursorMiddle.geometry.verticesNeedUpdate = true;
         }
 
@@ -1085,10 +1088,14 @@ if(enableSound){
           for (var j=0; j<endCh; j++){
             removeLetterCodeMirror(endLine,j);
           }
-          // the ones in the middle if the sleection is more than two lines
-          for (var i=1; i< change.removed.length-1; i++){
-            for (var j=0; j<change.removed[i].length; j++){
-              removeLetterCodeMirror(startLine+i,j);
+          // the ones in the middle if the selection is more than two lines
+          for (var i=startLine+1; i< endLine; i++){
+            if(change.removed[i-startLine] == undefined){
+              alert("oops no removed[i] is undefined");
+              debugger;
+            }
+            for (var j=0; j<change.removed[i-startLine].length; j++){
+              removeLetterCodeMirror(i,j);
             }
           }
         }
@@ -1116,9 +1123,9 @@ if(enableSound){
           cmGrid[startLine].splice(startCh+(cmGrid[endLine].length-endCh),cmGrid[startLine].length - startCh+(cmGrid[endLine].length-endCh));
 
 
-          for (var i=1; i<cmGrid.length-1; i++){
+          for (var i=startLine+1; i<cmGrid.length; i++){
             for (var j=0; j<cmGrid[i].length; j++){
-              shiftLetterVerticallyCodeMirror(i+startLine,j,startLine-endLine);
+              shiftLetterVerticallyCodeMirror(i,j,startLine-endLine);
             }
           }
           cmGrid.splice(startLine+1,endLine-startLine);
@@ -1148,7 +1155,7 @@ if(enableSound){
           for (var i=startCh; i<cmGrid[startLine].length; i++){
             if(change.text.length>1)
               shiftLetterVerticallyCodeMirror(startLine,i,change.text.length-1);
-            shiftLetterHorizontallyCodeMirror(startLine,i,i-startCh);
+            shiftLetterHorizontallyCodeMirror(startLine,i,-startCh+change.text[change.text.length-1].length);
           }
           // following lines shifting
           for (var i=startLine+1; i<cmGrid.length; i++){
