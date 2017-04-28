@@ -207,6 +207,7 @@ window.onload = function() {
     var reverb = context.createConvolver();
     var reverb2 = context.createConvolver();
     var chatter = context.createBufferSource();
+    var chatterStart = true;
     var heartbeat = context.createBufferSource();
     var ending = context.createBufferSource();
     var heartbeatGainValue = 0;
@@ -942,6 +943,11 @@ if(enableSound){
         }*/
         else if (keycode == 93 || keycode == 18 || keycode == 92){ // right command key
           pageContent[currentPage] = editor.getDoc().getValue();
+          var prevgeoindex = geoindex;
+          geoindex++;
+          geoindex%=2;
+          geo[currentPage][geoindex] = geo[currentPage][prevgeoindex].clone();
+          geoindex = 0;
           currentPage++;
           currentPage%=numPage;
 
@@ -949,7 +955,6 @@ if(enableSound){
           editor.focus();
           editor.execCommand("goDocEnd")
 
-            geoindex = 0;
             if (currentPage == 2){
                 //
                 var source = context.createBufferSource();
@@ -961,8 +966,11 @@ if(enableSound){
                 source.connect(gain);
                 gain.connect(compressor);
                 source.start(0);
-
-                chatter.start(0);
+                if(chatterStart)
+                {
+                  chatter.start(0);
+                  chatterStart = false;
+                }
                 reverseGate.params.mix.set(0.0,context.currentTime,1);
                 reverseGate.params.mix.set(1.0,context.currentTime + 90,1);
 
