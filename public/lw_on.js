@@ -1380,27 +1380,14 @@ if(enableSound){
       }else if (obj[0] == "/zoomin"){
         zoom(1/1.01);
       }else if (obj[0] == "/camrotate"){
-        if(obj[1])
-          camera.rotation.x += obj[1]/500 * (camera.fov/45);
-        if(obj[2])
-          camera.rotation.y += obj[2]/500 * (camera.fov/45);
-        if(obj[3])
-          camera.rotation.z += obj[3]/500 * (camera.fov/45);
+        camera.rotation.x = obj[1] * (camera.fov/45);
+        camera.rotation.y = obj[2] * (camera.fov/45);
+        camera.rotation.z = obj[3] * (camera.fov/45);
       }
-      else if (obj[0] == "/camrotate"){
-        if(obj[1])
-          camera.rotation.x += obj[1]/500 * (camera.fov/45);
-        if(obj[2])
-          camera.rotation.y += obj[2]/500 * (camera.fov/45);
-        if(obj[3])
-          camera.rotation.z += obj[3]/500 * (camera.fov/45);
-      }else if(obj[0] == "/camtranslate"){
-        if(obj[1])
-          camera.position.x += obj[1]/10;
-        if(obj[2])
-          camera.position.y += obj[2]/10;
-        if(obj[3])
-          camera.position.z += obj[3]/10;
+      else if(obj[0] == "/camtranslate"){
+        camera.position.x = obj[1]*50;
+        camera.position.y = obj[2]*50;
+        camera.position.z = obj[3]*50;
       }else if(obj[0] == "/panic"){
         panicCamera();
       }else if (obj[0] == "/added"){
