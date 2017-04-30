@@ -701,6 +701,16 @@ if(enableSound){
     };
     window.onresize();
 
+    var panicCamera = function(){
+      camera.position.z = radius;
+      camera.position.x = 0;
+      camera.position.y = 0;
+      camera.fov = 45;
+      camera.setLens(35);
+      camera.rotation.x = 0;
+      camera.rotation.y = 0;
+      camera.rotation.z = 0;
+    }
     var radius = 0;
 
     var scene = new THREE.Scene();
@@ -1365,9 +1375,9 @@ if(enableSound){
       if(osc_received)
         osc_received.innerHTML = obj;
       console.log("received osc messages", obj);
-      if(obj[0] == "/zoomin"){
+      if(obj[0] == "/zoomout"){
         zoom(1.01);
-      }else if (obj[0] == "/zoomout"){
+      }else if (obj[0] == "/zoomin"){
         zoom(1/1.01);
       }else if (obj[0] == "/camrotate"){
         if(obj[1])
@@ -1391,6 +1401,8 @@ if(enableSound){
           camera.position.y += obj[2]/10;
         if(obj[3])
           camera.position.z += obj[3]/10;
+      }else if(obj[0] == "/panic"){
+        panicCamera();
       }
 
     });
