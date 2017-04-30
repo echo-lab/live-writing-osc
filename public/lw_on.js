@@ -1403,8 +1403,44 @@ if(enableSound){
           camera.position.z += obj[3]/10;
       }else if(obj[0] == "/panic"){
         panicCamera();
+      }else if (obj[0] == "/added"){
+        var content = obj[1];
+        var doc = editor.getDoc();
+        if(obj.length>2){
+          var  line = parseInt(obj[2]),
+          ch = parseInt(obj[3]);
+          if (!Number.isInteger(line) || !Number.isInteger(ch)){
+            alert("received osc message contains non-numbers : ", obj);
+            return;
+          }
+
+        }else{
+          var line = doc.getCursor().line,
+          ch = doc.getCursor().ch; // gets the line number in the cursor position
+        }
+
+        doc.replaceRange(content, { // create a new object to avoid mutation of the original selection
+            line: line,
+            ch: ch // set the character position to the end of the line
+        });
+      }
+      else if (obj[0] == "/removed"){
+        if(obj.length!=5){
+          alert("removed requires 4 more parameters", obj);
+          return;
+        }
+        var startLine = parseInt(obj[1]),
+        startCh = parseInt(obj[2]),
+        endLine = parseInt(obj[3]),
+        endCh = parseInt(obj[4]);
+        editor.getDoc().setSelection({line:startLine, ch:startCh}, {line:endLine, ch:endCh});
+        editor.getDoc().replaceSelection("");
+      }
+      else{
+        alert("unknown osc message: Cannot parse it ", obj);
       }
 
+      return;
     });
 
 
