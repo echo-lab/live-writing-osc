@@ -248,6 +248,10 @@ window.onload = function() {
     var masterGain = context.createGain();
     var analyser = context.createAnalyser();
 
+    var triangle_osc = new Oscillator(22, 'triangle');
+    var triangle_adsr = new ADSR();
+
+
     var noise = WX.Noise({ output: 0.25 });
     var fbank = WX.FilterBank();
     var cverb = WX.ConVerb({ mix: 0.85 });
@@ -353,8 +357,10 @@ if(enableSound){
                   else if (sourceType == "audio"){ // first selected (e.g. mic from audio interface)
                       sourceMic = context.createMediaStreamSource(stream);
                       sourceMic.connect(level_original); // ON/OFF
-                      sourceMic.connect(pitch_convolver[0]); // ON/OFF
-                      sourceMic.connect(pitch_convolver[1]); // ON/OFF
+                      if(droneState){
+                        sourceMic.connect(pitch_convolver[0]); // ON/OFF
+                        sourceMic.connect(pitch_convolver[1]); // ON/OFF
+                      }
                       sourceMic.connect(reverb); // ON/OFF
                       console.log('separate mic connected.');
                   }
@@ -827,7 +833,8 @@ if(enableSound){
     });*/
     //  scene.add(geo);
 
-    var state = 0;
+    var tickState = 0;
+    var droneState = false;
     var snapToggle = false;
     var tdscale = 5.0;
 
@@ -887,13 +894,7 @@ if(enableSound){
 
     var scaleModel = fbank.getScaleModel();
     //console.log(scaleModel);
-
-
-
     var oscillator_list = {};
-
-
-
 
     var interval = 1, alpha = 0.9, lastKeyTime = 0;
     var index = 30;
@@ -1160,7 +1161,7 @@ if(enableSound){
                 // play drone sound
             console.log("space or enter : " + avgInterval + "(" + keyInterval + "," + keyIntervalCnt + ")");
 
-            if ( avgInterval > 0.4){
+            if ( droneState && avgInterval > 0.4){
                 var randompitch = [26,27,28,29,29,34][getRandomInt(0,5)];
                 console.log("drone triggered : " + randompitch);
                 var osc = new Oscillator(randompitch, 'sawtooth');
@@ -1175,11 +1176,21 @@ if(enableSound){
             }
             keyInterval = 0;
             keyIntervalCnt = 0;
+        }else if (keycode == 33){
+          // disable drone
+          droneState = !droneState;
+          if(droneState){
+            sourceMic.connect(pitch_convolver[0]); // ON/OFF
+            sourceMic.connect(pitch_convolver[1]); // ON/OFF
+          }else{
+            sourceMic.disconnect(pitch_convolver[0]); // ON/OFF
+            sourceMic.disconnect(pitch_convolver[1]); // ON/OFF
+            triangle_osc.node.disconnect(triangle_adsr.node);
+          }
         }
-        else if (keycode == 191){
-            state ++;
-            if (state == 1){
-
+        else if (keycode == 191){ // question marks
+            tickState ++;
+            if (tickState == 1){
                // reverseGate.set('mix', 1.0,context.currenTime + 10);
 
                 delay.params.mix.set(0.0,context.currentTime,1);
@@ -1234,7 +1245,7 @@ if(enableSound){
         lastKeyTime = currentTime;
 
 
-        if (state%2== 1){ // alternate by question mark.
+        if (tickState%2== 1){ // alternate by question mark.
             var source = context.createBufferSource();
             source.buffer = buffers['tick1'];
             //source.playbackRate.value = 1 + Math.random()*2;
@@ -1267,19 +1278,19 @@ if(enableSound){
               level_reverb.gain.linearRampToValueAtTime(0.0, context.currentTime )
               level_reverb.gain.linearRampToValueAtTime(1.0, context.currentTime + 30)
 
-              var osc = new Oscillator(22, 'triangle');
-              var adsr = new ADSR();
-              osc.node.connect(adsr.node);
-              adsr.node.connect(level_reverb);
+              if(droneState){
+                triangle_osc.node.connect(triangle_adsr.node);
+              }
+              triangle_adsr.node.connect(level_reverb);
 
-              osc.play(0);
+              triangle_osc.play(0);
               // osc.stop(context.currentTime + 300);
               //adsr.play(0,30,120,30,120,0.05,0.025);
-              adsr.noteOn(0,30,600,0.07,0.03);
-              osc.node.detune.linearRampToValueAtTime(0.0, context.currentTime);
-              osc.node.detune.linearRampToValueAtTime(0.0, context.currentTime + 30);
-              osc.node.detune.linearRampToValueAtTime(900, context.currentTime + 120);
-              osc.node.detune.linearRampToValueAtTime(200, context.currentTime + 240);
+              triangle_adsr.noteOn(0,30,600,0.07,0.03);
+              triangle_osc.node.detune.linearRampToValueAtTime(0.0, context.currentTime);
+              triangle_osc.node.detune.linearRampToValueAtTime(0.0, context.currentTime + 30);
+              triangle_osc.node.detune.linearRampToValueAtTime(900, context.currentTime + 120);
+              triangle_osc.node.detune.linearRampToValueAtTime(200, context.currentTime + 240);
             }
             else if (lineindex[currentPage] == 4 && currentPage == 0){ // thr fifth line the first page
                 var shaderMaterial = new THREE.ShaderMaterial({
