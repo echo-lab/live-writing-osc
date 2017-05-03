@@ -206,6 +206,7 @@ window.onload = function() {
     pitch_convolver[1] = context.createConvolver();
     pitch_convolver_ADSR[0] = new ADSR();
     pitch_convolver_ADSR[1] = new ADSR();
+    var pitch_convolver_level = context.createGain();
     var reverb = context.createConvolver();
     var reverb2 = context.createConvolver();
     var chatter = context.createBufferSource();
@@ -252,6 +253,7 @@ window.onload = function() {
 
     var triangle_osc = new Oscillator(22, 'triangle');
     var triangle_adsr = new ADSR();
+    var triangle_drone = context.createGain();
 
 
     var noise = WX.Noise({ output: 0.25 });
@@ -284,8 +286,9 @@ window.onload = function() {
     level_reverb.connect(compressor);
     pitch_convolver[0].connect(pitch_convolver_ADSR[0].node);
     pitch_convolver[1].connect(pitch_convolver_ADSR[1].node);
-    pitch_convolver_ADSR[0].node.connect(level_reverb);
-    pitch_convolver_ADSR[1].node.connect(level_reverb);
+    pitch_convolver_ADSR[0].node.connect(pitch_convolver_level);
+    pitch_convolver_ADSR[1].node.connect(pitch_convolver_level);
+    pitch_convolver_level.connect(level_reverb);
     pitch_convolver_ADSR[0].noteOn(0,0,0, 1, 1);
 
     reverb.connect(level_reverb);
@@ -1184,20 +1187,15 @@ if(enableSound){
           if(droneState){
             //sourceMic.connect(pitch_convolver[0]); // ON/OFF
             //sourceMic.connect(pitch_convolver[1]); // ON/OFF
-            pitch_convolver_ADSR[0].node.connect(level_reverb);
-            pitch_convolver_ADSR[1].node.connect(level_reverb);
-            gain_filterbank.gain.linearRampToValueAtTime(0.3, context.currentTime + 1);
-            triangle_osc.node.connect(triangle_adsr.node);
-            triangle_adsr.node.connect(level_reverb);
-
+            pitch_convolver_level.gain.linearRampToValueAtTime(1.0, context.currentTime + 0.1);
+            gain_filterbank.gain.linearRampToValueAtTime(0.3, context.currentTime + 0.1);
+            triangle_drone.gain.linearRampToValueAtTime(1.0, context.currentTime + 0.1);
           }else{
             //sourceMic.disconnect(pitch_convolver[0]); // ON/OFF
             //sourceMic.disconnect(pitch_convolver[1]); // ON/OFF
-            pitch_convolver_ADSR[0].node.disconnect(level_reverb);
-            pitch_convolver_ADSR[1].node.disconnect(level_reverb);
-            triangle_osc.node.disconnect(triangle_adsr.node);
-            triangle_adsr.node.disconnect(level_reverb);
-            gain_filterbank.gain.linearRampToValueAtTime(0.0, context.currentTime + 1);
+            pitch_convolver_level.gain.linearRampToValueAtTime(0.0, context.currentTime + 0.1);
+            triangle_drone.gain.linearRampToValueAtTime(0.0, context.currentTime + 0.1);
+            gain_filterbank.gain.linearRampToValueAtTime(0.0, context.currentTime + 0.1);
           }
         }
         else if (keycode == 191){ // question marks
@@ -1290,7 +1288,8 @@ if(enableSound){
               if(droneState){
                 triangle_osc.node.connect(triangle_adsr.node);
               }
-              triangle_adsr.node.connect(level_reverb);
+              triangle_adsr.node.connect(triangle_drone);
+              triangle_drone.connect(level_reverb);
 
               triangle_osc.play(0);
               // osc.stop(context.currentTime + 300);
