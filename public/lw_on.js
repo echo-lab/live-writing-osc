@@ -1559,7 +1559,7 @@ if(enableSound){
 
       // take care of removed first.
       if(removed){
-        socket.emit('message', '/removed/'+change.from.line+"/" + change.from.ch+"/" +change.removed.join('\n'));
+        socket.emit('message', '/removed/'+change.from.line+"/" + change.from.ch+" " +change.removed.join('\n'));
 
         // if nothing is added, we need to move
         // if anything is added, we do not need to move as next if block will set it in a correct position.
@@ -1630,7 +1630,7 @@ if(enableSound){
       if(added){
 
         var joinedText = change.text.join("\n");
-        socket.emit('message', '/added/'+change.from.line+"/" + change.from.ch+"/" +joinedText);
+        socket.emit('message', '/added/'+change.from.line+"/" + change.from.ch+" " +joinedText);
 
         if(cmGrid[currentPage][startLine]=== undefined){
           cmGrid[currentPage][startLine] = [];
