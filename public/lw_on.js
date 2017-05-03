@@ -1371,6 +1371,12 @@ if(enableSound){
       camera.fov = fov;
       camera.updateProjectionMatrix();
     }
+    var zoomabs = function(ds){
+      var fov = 45 / ds;
+      fov = Math.min(120, Math.max(1, fov));
+      camera.fov = fov;
+      camera.updateProjectionMatrix();
+    }
     var wheelHandler = function(ev) {
       socket.emit('message', '/wheel/'+ev.wheelDelta);
 
@@ -1395,14 +1401,12 @@ if(enableSound){
       if(osc_received)
         osc_received.innerHTML = obj;
       console.log("received osc messages", obj);
-      if(obj[0] == "/zoomout"){
-        zoom(1.01);
-      }else if (obj[0] == "/zoomin"){
-        zoom(1/1.01);
+      if(obj[0] == "/zoom"){
+        zoomabs(obj[1]+1);
       }else if (obj[0] == "/camrotate"){
-        camera.rotation.x = obj[1] * (camera.fov/45);
-        camera.rotation.y = obj[2] * (camera.fov/45);
-        camera.rotation.z = obj[3] * (camera.fov/45);
+        camera.rotation.x = obj[1] *3.14159;
+        camera.rotation.y = obj[2] *3.14159;
+        camera.rotation.z = obj[3] *3.14159;
       }
       else if(obj[0] == "/camtranslate"){
         camera.position.x = obj[1]*50;
