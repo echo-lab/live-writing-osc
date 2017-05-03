@@ -195,6 +195,8 @@ window.onload = function() {
                               navigator.msGetUserMedia);
     var level_original = context.createGain();
     var level_reverb = context.createGain();
+    var gain_filterbank = context.createGain();
+
     var panNode = context.createStereoPanner();
 
     var pitch_convolver = [];
@@ -1176,16 +1178,26 @@ if(enableSound){
             }
             keyInterval = 0;
             keyIntervalCnt = 0;
-        }else if (keycode == 33){
+        }else if (keycode == 49 && ev.shiftKey == true ){
           // disable drone
           droneState = !droneState;
           if(droneState){
-            sourceMic.connect(pitch_convolver[0]); // ON/OFF
-            sourceMic.connect(pitch_convolver[1]); // ON/OFF
+            //sourceMic.connect(pitch_convolver[0]); // ON/OFF
+            //sourceMic.connect(pitch_convolver[1]); // ON/OFF
+            pitch_convolver_ADSR[0].node.connect(level_reverb);
+            pitch_convolver_ADSR[1].node.connect(level_reverb);
+            gain_filterbank.gain.linearRampToValueAtTime(0.3, context.currentTime + 1);
+            triangle_osc.node.connect(triangle_adsr.node);
+            triangle_adsr.node.connect(level_reverb);
+
           }else{
-            sourceMic.disconnect(pitch_convolver[0]); // ON/OFF
-            sourceMic.disconnect(pitch_convolver[1]); // ON/OFF
+            //sourceMic.disconnect(pitch_convolver[0]); // ON/OFF
+            //sourceMic.disconnect(pitch_convolver[1]); // ON/OFF
+            pitch_convolver_ADSR[0].node.disconnect(level_reverb);
+            pitch_convolver_ADSR[1].node.disconnect(level_reverb);
             triangle_osc.node.disconnect(triangle_adsr.node);
+            triangle_adsr.node.disconnect(level_reverb);
+            gain_filterbank.gain.linearRampToValueAtTime(0.0, context.currentTime + 1);
           }
         }
         else if (keycode == 191){ // question marks
@@ -1198,17 +1210,14 @@ if(enableSound){
                 delay.params.mix.set(1.0,context.currentTime+90,1);
                 delay.params.mix.set(0.0,context.currentTime+120,1);
 
-                var gain_filterbank = context.createGain();
                 gain_filterbank.gain.value = 0.0;
                 noise.to(fbank).to(cverb).to(gain_filterbank);
                 chatter.to(fbank._inlet);
 
+
                 gain_filterbank.connect(compressor)
                 gain_filterbank.gain.linearRampToValueAtTime(0., context.currentTime);
-                gain_filterbank.gain.linearRampToValueAtTime(0.3, context.currentTime + 3);
-
-                cverb.set('output',0.3);
-
+                if(droneState)gain_filterbank.gain.linearRampToValueAtTime(0.3, context.currentTime + 3);
 
             }
         }
