@@ -1420,9 +1420,10 @@ if(enableSound){
       }else if(obj[0] == "/color"){
         console.log(obj[1]| 0x000000);
         if(obj.length==4){
-          renderer.setClearColor('rgb('+obj[1]+","+obj[2]+","+obj[3]+")");
+          renderer.setClearColor('rgb('+parseInt(obj[1]*255)+","+parseInt(obj[2]*255)+","+parseInt(obj[3]*255)+")");
         }else if (obj.length == 2){
-            renderer.setClearColor('rgb('+obj[1]+","+obj[1]+","+obj[1]+")");
+          var grayColor = parseInt(obj[1]*255);
+            renderer.setClearColor('rgb('+grayColor+","+grayColor+","+grayColor+")");
         }else{
           alert("We need 3 parameters for /color");
         }
@@ -1430,8 +1431,7 @@ if(enableSound){
         if(obj.length!=2){
           alert("We need 1 parameters for /color")
         }else{
-          uniforms.fontcolor.value = obj[1]/255;
-
+          uniforms.fontcolor.value = obj[1];
         }
       }else if (obj[0] == "/added"){
         var content = obj[1];
