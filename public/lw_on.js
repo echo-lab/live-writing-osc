@@ -573,10 +573,10 @@ if(enableSound){
       var strIndex = object.index;
 
       console.log("removing letter index(",line,",",ch,") : ", strIndex);
-      geo[currentPage][geoindex].vertices[strIndex*4].y = +50;
-      geo[currentPage][geoindex].vertices[strIndex*4+1].y = +50;
-      geo[currentPage][geoindex].vertices[strIndex*4+2].y = +50;
-      geo[currentPage][geoindex].vertices[strIndex*4+3].y = +50;
+      geo[currentPage][geoindex].vertices[strIndex*4].z = +50;
+      geo[currentPage][geoindex].vertices[strIndex*4+1].z = +50;
+      geo[currentPage][geoindex].vertices[strIndex*4+2].z = +50;
+      geo[currentPage][geoindex].vertices[strIndex*4+3].z = +50;
     }
 
     var shiftLetterVerticallyCodeMirror = function(line,ch,shiftAmount){
@@ -725,6 +725,8 @@ if(enableSound){
     var radius = 0;
 
     var scene = new THREE.Scene();
+
+
     camera.position.z = radius;
     scene.add(camera);
 
@@ -760,7 +762,9 @@ if(enableSound){
     //    center : { type: "v2", value: new THREE.Vector2(centerX,centerY) },
         map : { type: "t", value: tex },
         rightMostXCoord : { type: "f", value: 0.0 },
-        noise : {type:"f", value:0.0}
+        noise : {type:"f", value:0.0},
+        fontcolor : {type:"f", value:0.0}
+
       //  xCoord : { type: "f", value: 0.0 }
     };
 
@@ -1413,6 +1417,22 @@ if(enableSound){
         camera.position.z = obj[3]*50;
       }else if(obj[0] == "/panic"){
         panicCamera();
+      }else if(obj[0] == "/color"){
+        console.log(obj[1]| 0x000000);
+        if(obj.length==4){
+          renderer.setClearColor('rgb('+obj[1]+","+obj[2]+","+obj[3]+")");
+        }else if (obj.length == 2){
+            renderer.setClearColor('rgb('+obj[1]+","+obj[1]+","+obj[1]+")");
+        }else{
+          alert("We need 3 parameters for /color");
+        }
+      }else if(obj[0] == "/fontcolor"){
+        if(obj.length!=2){
+          alert("We need 1 parameters for /color")
+        }else{
+          uniforms.fontcolor.value = obj[1]/255;
+
+        }
       }else if (obj[0] == "/added"){
         var content = obj[1];
         var doc = editor.getDoc();
@@ -1567,13 +1587,13 @@ if(enableSound){
           removeLetterCodeMirror(startLine,j);
         }
 
-
+/*
         for (var i=1; i< change.removed.length-1; i++){
           for (var j=0; j<change.removed[i].length; j++){
             removeLetterCodeMirror(startLine+i,j);
           }
         }
-
+*/
         if (startLine != endLine){
           for (var j=0; j<endCh; j++){
             removeLetterCodeMirror(endLine,j);
@@ -1614,14 +1634,14 @@ if(enableSound){
           cmGrid[currentPage][startLine].splice(startCh+(cmGrid[currentPage][endLine].length-endCh),cmGrid[currentPage][startLine].length - startCh+(cmGrid[currentPage][endLine].length-endCh));
 
 
-          for (var i=startLine+1; i<cmGrid.length; i++){
+          for (var i=endLine+1; i<cmGrid[currentPage].length; i++){
             for (var j=0; j<cmGrid[currentPage][i].length; j++){
               shiftLetterVerticallyCodeMirror(i,j,startLine-endLine);
             }
           }
-          cmGrid.splice(startLine+1,endLine-startLine);
+          cmGrid[currentPage].splice(startLine+1,endLine-startLine);
           if(cmGrid[currentPage][startLine].length == 0)
-            cmGrid.splice(startLine, 1);
+            cmGrid[currentPage].splice(startLine, 1);
         }
       }
 
@@ -1692,75 +1712,6 @@ if(enableSound){
 
 // sanity check
 
-/*
-
-        for (var i=1; i< change.text.length-1; i++){
-          for (var j=0; j<change.text[i].length; j++){
-            addLetterCodeMirror(startLine+i, j, {index:pageStrIndex[currentPage], sizeFactor:sizeFactor}, change.text[i][j]);
-          }
-        }
-
-        if (startLine != endLine){
-          for (var j=0; j<endCh; j++){
-            removeLetterCodeMirror(cmGrid[endLine][j].index);
-          }
-        }
-        // shift any letter if needed:
-
-        if (change.text.length==1 && cmGrid[startLine] && change.text[0].length>0){// for the first line we need to shift any following letters.
-          if (startCh < cmGrid[startLine].length){
-            for (var i=startCh; i<cmGrid[currentPage][startLine].length; i++){
-              shiftLetterHorizontallyCodeMirror(cmGrid[currentPage][startLine][i],i,change.text[0].length);
-            }
-          }else if (startCh > cmGrid[currentPage][startLine].length){
-            console.error("ASSERT : startCh > cmGrid[currentPage][startLine].length(",startCh ,">", cmGrid[currentPage][startLine].length,")")
-          }else{
-            console.log("no shift needed");
-          }
-        }
-        else if (change.text.length>1){
-          // there are multiple lines.
-          // shift the following lines
-          for(var i=startLine+1; i< cmGrid[currentPage].length; i++){
-            for (var j=0; j< cmGrid[currentPage][i].length; j++){
-              shiftLetterVerticallyCodeMirror(cmGrid[currentPage][i][j],i,change.text.length-1);
-            }
-          }
-
-          if (startCh < cmGrid[currentPage][startLine].length){
-            for (var i=startCh; i<cmGrid[currentPage][startLine].length; i++){
-              shiftLetterVerticallyCodeMirror(cmGrid[currentPage][startLine][i],startLine,change.text.length-1);
-              shiftLetterHorizontallyCodeMirror(cmGrid[currentPage][startLine][i],i-startCh,change.text[change.text.length-1].length);
-            }
-          }else if (startCh > cmGrid[currentPage][startLine].length){
-            console.error("ASSERT : startCh > cmGrid[currentPage][startLine].length(",startCh ,">", cmGrid[currentPage][startLine].length,")")
-          }else{
-            console.log("no shift needed");
-          }
-        }
-
-
-        for(var index=0; index< change.text.length; index++){
-          var line = change.text[index];
-          var ch=0;
-          if(index == 0){
-            ch = startCh;
-          }else{
-            cmGrid[currentPage].splice(startLine,0,[]); // from the 2nd line , we need to push
-          }
-          for(var j=0; j< line.length; j++){
-            ch += j;
-
-            // maintain cmGrid[currentPage] before adding letter.
-
-            var sizeFactor = 0;
-            cmGrid[currentPage][index+startLine].splice(ch,0,{index: pageStrIndex[currentPage], sizeFactor: sizeFactor});
-
-            addLetterCodeMirror(startLine + index, ch, {index:pageStrIndex[currentPage], sizeFactor:sizeFactor}, line[j]);
-            pageStrIndex[currentPage]++;
-          }
-
-        }*/
       }//
 
       books[currentPage].geometry = geo[currentPage][geoindex];
