@@ -1433,7 +1433,7 @@ if(enableSound){
         }else{
           uniforms.fontcolor.value = obj[1];
         }
-      }else if (obj[0] == "/added"){
+      }else if (obj[0] == "/add"){
         var content = obj[1];
         var doc = editor.getDoc();
         if(obj.length>2){
@@ -1448,13 +1448,24 @@ if(enableSound){
           var line = doc.getCursor().line,
           ch = doc.getCursor().ch; // gets the line number in the cursor position
         }
-
-        doc.replaceRange(content, { // create a new object to avoid mutation of the original selection
-            line: line,
-            ch: ch // set the character position to the end of the line
-        });
+        if (content == 32){
+          doc.replaceRange(" ", { // create a new object to avoid mutation of the original selection
+              line: line,
+              ch: ch // set the character position to the end of the line
+          });
+        }else if (content == 13){
+          doc.replaceRange("\n", { // create a new object to avoid mutation of the original selection
+              line: line,
+              ch: ch // set the character position to the end of the line
+          });
+        }else{
+          doc.replaceRange(content, { // create a new object to avoid mutation of the original selection
+              line: line,
+              ch: ch // set the character position to the end of the line
+          });
+        }
       }
-      else if (obj[0] == "/removed"){
+      else if (obj[0] == "/remove"){
         if(obj.length!=5){
           alert("removed requires 4 more parameters", obj);
           return;
