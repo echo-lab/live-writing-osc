@@ -1,5 +1,5 @@
 var soundmap = {
-  'chatter':'sound/chatter_amp.mp3' // chatter that starts in the thrid page.
+  'chatter':'sound/chatter_amp_3db.mp3' // chatter that starts in the thrid page.
   , 'gong' : 'sound/indonesian_gong.wav' // click sound from the 2nd page.
   , 'tick1' : 'sound/tick1.wav' // click sound from the 2nd page.
   , 'ir1' : 'sound/ir1.wav' // reverb impulse response.
