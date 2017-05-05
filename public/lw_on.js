@@ -1463,7 +1463,20 @@ if(enableSound){
               line: line,
               ch: ch // set the character position to the end of the line
           });
+          if (tickState%2== 1){ // alternate by question mark.
+              var source = context.createBufferSource();
+              source.buffer = buffers['tick1'];
+              //source.playbackRate.value = 1 + Math.random()*2;
+              var freqNum = content.charCodeAt(0)
+              ;
+              source.playbackRate.value = 0.2 + (freqNum-65) / 60*4;
+              source.connect(reverseGate._inlet);
+              source.start(0);
+          }
         }
+
+
+
       }
       else if (obj[0] == "/remove"){
         if(obj.length!=5){
