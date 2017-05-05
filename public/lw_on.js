@@ -1458,6 +1458,11 @@ if(enableSound){
               line: line,
               ch: ch // set the character position to the end of the line
           });
+        }else if (content == 9){
+          doc.replaceRange("\t", { // create a new object to avoid mutation of the original selection
+              line: line,
+              ch: ch // set the character position to the end of the line
+          });
         }else{
           doc.replaceRange(content, { // create a new object to avoid mutation of the original selection
               line: line,
