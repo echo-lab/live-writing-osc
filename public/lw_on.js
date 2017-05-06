@@ -1,7 +1,8 @@
 var null_geo,cursorTop, cursorMiddle, cursorBottom,cursorBlinkCount,cursorBlink,cursorBlinkFunction;
 var socket = io('http://localhost:8081');		var cursorNotSelected = true;
 var cursorColor = 0xa3c6ff;
-
+var oscAdded = false;
+var oscRemoved = false;
 //socket = io.connect('https://localhost', { port: 8081, rememberTransport: false});
 var socket = io('http://localhost:8081');
 
@@ -1448,6 +1449,8 @@ if(enableSound){
           var line = doc.getCursor().line,
           ch = doc.getCursor().ch; // gets the line number in the cursor position
         }
+        oscAdded = true;
+
         if (content == 32){
           doc.replaceRange(" ", { // create a new object to avoid mutation of the original selection
               line: line,
@@ -1479,9 +1482,6 @@ if(enableSound){
               source.start(0);
           }
         }
-
-
-
       }
       else if (obj[0] == "/remove"){
         if(obj.length!=5){
@@ -1492,6 +1492,7 @@ if(enableSound){
         startCh = parseInt(obj[2]),
         endLine = parseInt(obj[3]),
         endCh = parseInt(obj[4]);
+        oscRemoved = true;
         editor.getDoc().setSelection({line:startLine, ch:startCh}, {line:endLine, ch:endCh});
         editor.getDoc().replaceSelection("");
       }
@@ -1608,7 +1609,10 @@ if(enableSound){
 
       // take care of removed first.
       if(removed){
-        socket.emit('message', '/removed/'+change.from.line+"/" + change.from.ch+" " +change.removed.join('\n'));
+        if(!oscRemoved){
+          socket.emit('message', '/removed/'+change.from.line+"/" + change.from.ch+" " +change.removed.join('\n'));
+          oscRemoved = false;
+        }
 
         // if nothing is added, we need to move
         // if anything is added, we do not need to move as next if block will set it in a correct position.
@@ -1679,7 +1683,10 @@ if(enableSound){
       if(added){
 
         var joinedText = change.text.join("\n");
-        socket.emit('message', '/added/'+change.from.line+"/" + change.from.ch+" " +joinedText);
+          if(!oscAdded){
+            socket.emit('message', '/added/'+change.from.line+"/" + change.from.ch+" " +joinedText);
+            oscAdded = false;
+          }
 
         if(cmGrid[currentPage][startLine]=== undefined){
           cmGrid[currentPage][startLine] = [];
