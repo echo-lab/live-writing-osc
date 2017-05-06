@@ -1611,8 +1611,8 @@ if(enableSound){
       if(removed){
         if(!oscRemoved){
           socket.emit('message', '/removed/'+change.from.line+"/" + change.from.ch+" " +change.removed.join('\n'));
-          oscRemoved = false;
         }
+        oscRemoved = false;
 
         // if nothing is added, we need to move
         // if anything is added, we do not need to move as next if block will set it in a correct position.
@@ -1685,8 +1685,8 @@ if(enableSound){
         var joinedText = change.text.join("\n");
           if(!oscAdded){
             socket.emit('message', '/added/'+change.from.line+"/" + change.from.ch+" " +joinedText);
-            oscAdded = false;
           }
+          oscAdded = false;
 
         if(cmGrid[currentPage][startLine]=== undefined){
           cmGrid[currentPage][startLine] = [];
