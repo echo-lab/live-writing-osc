@@ -860,7 +860,7 @@ if(enableSound){
 
         var resultArr = getAverageVolume(amplitudeArray);
         volume = alpha * (resultArr[0]/128.0) + (1-alpha) * volume;
-        uniforms.volume.value = volume/1.5;
+        uniforms.volume.value = volume/2.0;
         freqIndex = resultArr[1];
         if(currentPage == 1 && lineindex[currentPage] <=8 ){
             camera.rotation.y -= 0.00015;
@@ -987,9 +987,10 @@ if(enableSound){
                 {
                   chatter.start(0);
                   chatterStart = false;
+                  reverseGate.params.mix.set(0.0,context.currentTime,1);
+                  reverseGate.params.mix.set(1.0,context.currentTime + 90,1);
+
                 }
-                reverseGate.params.mix.set(0.0,context.currentTime,1);
-                reverseGate.params.mix.set(1.0,context.currentTime + 90,1);
 
             }
             else if (currentPage == 1){ // the 2nd page
@@ -1301,7 +1302,7 @@ if(enableSound){
               triangle_osc.node.detune.linearRampToValueAtTime(900, context.currentTime + 120);
               triangle_osc.node.detune.linearRampToValueAtTime(200, context.currentTime + 240);
             }
-            else if (lineindex[currentPage] == 4 && currentPage == 0){ // thr fifth line the first page
+            else if (lineindex[currentPage] == 7 && currentPage == 0){ // thr fifth line the first page
                 var shaderMaterial = new THREE.ShaderMaterial({
                     uniforms : uniforms,
                     attributes : attributes,
@@ -1314,7 +1315,7 @@ if(enableSound){
                 for (var i=0; i< numPage; i++)
                     books[i].material = shaderMaterial;
 
-           }else if (lineindex[currentPage] == 7&& currentPage == 2){
+           }else if (lineindex[currentPage] == 11&& currentPage == 2){
              if(!ending.loop){
                ending.start(0);
                ending.loop = true;
@@ -1592,7 +1593,7 @@ if(enableSound){
       var added = change.text.join('\n').length>0
       var removed = change.removed.join('\n').length>0
 
-      if (editor.getDoc().lineCount() <=8 && currentPage == 0)
+      if (editor.getDoc().lineCount() <=11 && currentPage == 0)
         volume = 0;
       sizeFactor = volume;
 
