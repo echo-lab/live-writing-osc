@@ -1,37 +1,35 @@
+var SOCKETFLAG = false;
 var null_geo,cursorTop, cursorMiddle, cursorBottom,cursorBlinkCount,cursorBlink,cursorBlinkFunction;
-var socket = io('http://localhost:8081');		var cursorNotSelected = true;
+if(SOCKETFLAG)var socket = io('http://localhost:8081');		var cursorNotSelected = true;
 var cursorColor = 0xa3c6ff;
-var oscAdded = false;
-var oscRemoved = false;
+
 //socket = io.connect('https://localhost', { port: 8081, rememberTransport: false});
-var socket = io('http://localhost:8081');
+//var socket = io('http://localhost:8081');
 
-console.log('oi');
-socket.on('connect_failed', function(obj){
-    console.log('Connection Failed\n', obj);
-});
+if(SOCKETFLAG){
+  socket.on('connect_failed', function(obj){
+      console.log('Connection Failed\n', obj);
+  });
+  socket.on('connect', function() {
+      console.log('Connected');
 
+       // sends to socket.io server the host/port of oscServer
+       // and oscClient
+       socket.emit('config',
+           {
+               server: {
+                   port: 3333,// listening to 3333
+                   host: '127.0.0.1'
+               },
+               client: {
+                   port: 3334,// sending to 3334
+                   host: '127.0.0.1'
+               }
+           }
+       );
+   });
+}
 
-
-
-socket.on('connect', function() {
-    console.log('Connected');
-
-     // sends to socket.io server the host/port of oscServer
-     // and oscClient
-     socket.emit('config',
-         {
-             server: {
-                 port: 3333,// listening to 3333
-                 host: '127.0.0.1'
-             },
-             client: {
-                 port: 3334,// sending to 3334
-                 host: '127.0.0.1'
-             }
-         }
-     );
- });
 
 function ScissorVoice(noteNum, numOsc, oscType, detune){
   this.output  = new ADSR();
@@ -186,6 +184,8 @@ window.onload = function() {
 
     // set up forked web audio context, for multiple browsers
     // window. is needed otherwise Safari explodes
+    var tickState = 0;
+    var droneState = true;
 
     var volume = 0;
     var freqIndex;
@@ -841,8 +841,6 @@ if(enableSound){
     });*/
     //  scene.add(geo);
 
-    var tickState = 0;
-    var droneState = false;
     var snapToggle = false;
     var tdscale = 5.0;
 
@@ -939,7 +937,7 @@ if(enableSound){
         if(enableCodeMirror)editor.focus();
 
         var keycode = ev.which;
-        if(keycode <=46 || keycode >=91){
+        if(SOCKETFLAG && (keycode <=46 || keycode >=91)){
           socket.emit('message', '/key/'+keycode);
         }
 
@@ -1380,7 +1378,7 @@ if(enableSound){
       camera.updateProjectionMatrix();
     }
     var wheelHandler = function(ev) {
-      socket.emit('message', '/wheel/'+ev.wheelDelta);
+      if(SOCKETFLAG)socket.emit('message', '/wheel/'+ev.wheelDelta);
 
         var ds = (ev.detail < 0 || ev.wheelDelta > 0) ? (1/1.01) : 1.01;
         if (ev.detail < 0 || ev.wheelDelta > 0) {
@@ -1398,7 +1396,7 @@ if(enableSound){
 
     };
 
-    socket.on('message2', function(obj) {
+    if(SOCKETFLAG)socket.on('message2', function(obj) {
       var osc_received = document.getElementById("osc_received");
       if(osc_received)
         osc_received.innerHTML = obj;
@@ -1447,8 +1445,6 @@ if(enableSound){
           var line = doc.getCursor().line,
           ch = doc.getCursor().ch; // gets the line number in the cursor position
         }
-        oscAdded = true;
-
         if (content == 32){
           doc.replaceRange(" ", { // create a new object to avoid mutation of the original selection
               line: line,
@@ -1480,6 +1476,9 @@ if(enableSound){
               source.start(0);
           }
         }
+
+
+
       }
       else if (obj[0] == "/remove"){
         if(obj.length!=5){
@@ -1490,7 +1489,6 @@ if(enableSound){
         startCh = parseInt(obj[2]),
         endLine = parseInt(obj[3]),
         endCh = parseInt(obj[4]);
-        oscRemoved = true;
         editor.getDoc().setSelection({line:startLine, ch:startCh}, {line:endLine, ch:endCh});
         editor.getDoc().replaceSelection("");
       }
@@ -1510,7 +1508,7 @@ if(enableSound){
     var pitchIndex=0;
     window.onmousemove = function(ev) {
         if (down) {
-          socket.emit('message', '/mousedrag/'+ev.clientX+ '/' + ev.clientY);
+          if(SOCKETFLAG)socket.emit('message', '/mousedrag/'+ev.clientX+ '/' + ev.clientY);
 
             var dx = ev.clientX - sx;
             var dy = ev.clientY - sy;
@@ -1539,12 +1537,12 @@ if(enableSound){
             }
         }
         else{
-          socket.emit('message', '/mousemove/'+ev.clientX+ '/' + ev.clientY);
+          if(SOCKETFLAG)socket.emit('message', '/mousemove/'+ev.clientX+ '/' + ev.clientY);
         }
     };
     var reached = false
     window.onmousedown = function (ev){
-      socket.emit('message', '/mousedown/'+ev.clientX+ '/' + ev.clientY);
+      if(SOCKETFLAG)socket.emit('message', '/mousedown/'+ev.clientX+ '/' + ev.clientY);
 
        if (ev.target == renderer.domElement) {
             down = true;
@@ -1571,7 +1569,7 @@ if(enableSound){
     };
     window.onmouseup = function(ev){
         down = false;
-        socket.emit('message', '/mouseUp/'+ev.clientX+ '/' + ev.clientY);
+        if(SOCKETFLAG)socket.emit('message', '/mouseUp/'+ev.clientX+ '/' + ev.clientY);
 
         if ( drone && currentPage >= 1)
         { // ADSR.prototype.noteOff= function(delay, R, sustainlevel){
@@ -1607,10 +1605,7 @@ if(enableSound){
 
       // take care of removed first.
       if(removed){
-        if(!oscRemoved){
-          socket.emit('message', '/removed/'+change.from.line+"/" + change.from.ch+" " +change.removed.join('\n'));
-        }
-        oscRemoved = false;
+        if(SOCKETFLAG)socket.emit('message', '/removed/'+change.from.line+"/" + change.from.ch+" " +change.removed.join('\n'));
 
         // if nothing is added, we need to move
         // if anything is added, we do not need to move as next if block will set it in a correct position.
@@ -1681,10 +1676,7 @@ if(enableSound){
       if(added){
 
         var joinedText = change.text.join("\n");
-          if(!oscAdded){
-            socket.emit('message', '/added/'+change.from.line+"/" + change.from.ch+" " +joinedText);
-          }
-          oscAdded = false;
+        if(SOCKETFLAG)socket.emit('message', '/added/'+change.from.line+"/" + change.from.ch+" " +joinedText);
 
         if(cmGrid[currentPage][startLine]=== undefined){
           cmGrid[currentPage][startLine] = [];
