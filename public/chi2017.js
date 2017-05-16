@@ -1030,8 +1030,8 @@ if(enableSound){
         }
         else if(ev.shiftKey == true && keycode == 13){ // shift enter
             if ( currentPage == 2){
-                noiseBurstadsr.node.gain.linearRampToValueAtTime(1.0, context.currentTime );
-                noiseBurstadsr.node.gain.linearRampToValueAtTime(1.0, context.currentTime +8);
+                noiseBurstadsr.node.gain.linearRampToValueAtTime(0.7, context.currentTime );
+                noiseBurstadsr.node.gain.linearRampToValueAtTime(0.7, context.currentTime +8);
                 uniforms.time.value -= 0.1;
                 noiseBurstOn = true;
                 masterGain.gain.linearRampToValueAtTime(1.0,context.currentTime);
