@@ -24,8 +24,10 @@
    - `/wheel/[wheel data]`
 - receving port : 3333 (App --> LW)
  - types
-    - `/zoomin`
-    - `/zoomout`
+    - `/zoom [dx]`
     - `/camrotate [dx-angle] [dy-angle] [dz-angle]`
     - `/camtranslate [dx] [dy] [dz]`
+    - `/add [row] [col] [content]` : insert [content] at position (row, col)
+    - `/add [row] [col] [content] true` : replace [content] at position (row, col)
+    - `/add [content]` : append [content] at the current cursor position (typically the last one. )
 - reference

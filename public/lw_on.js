@@ -1,4 +1,4 @@
-var null_geo,cursorTop, cursorMiddle, cursorBottom,cursorBlinkCount,cursorBlink,cursorBlinkFunction;
+
 var socket = io('http://localhost:8081');		var cursorNotSelected = true;
 var cursorColor = 0xa3c6ff;
 var oscAdded = false;
@@ -32,117 +32,9 @@ socket.on('connect', function() {
          }
      );
  });
-
-function ScissorVoice(noteNum, numOsc, oscType, detune){
-  this.output  = new ADSR();
-  this.maxGain = 1 / numOsc;
-  this.noteNum = noteNum;
-  this.frequency = noteNum2Freq(noteNum);
-  this.oscs = [];
-  for (var i=0; i< numOsc; i++){
-    var osc = context.createOscillator();
-    osc.type = oscType;
-    osc.frequency.value = this.frequency;
-    osc.detune.value = -detune + i * 2 * detune / (numOsc - 1);
-    osc.start(context.currentTime);
-    osc.connect(this.output.node);
-    this.oscs.push(osc);
-  }
-}
-
-ScissorVoice.prototype.stop = function(time){
-  time =  time | context.currentTime;
-  var it = this;
-  setTimeout(function(){
-    for (var i=0; i<it.oscs.length; i++){
-        it.oscs[i].disconnect();
-    }
-
-  }, Math.floor((time-context.currentTime)*1000));
-}
-
-ScissorVoice.prototype.detune = function(detune){
-    for (var i=0; i<this.oscs.length; i++){
-        //this.oscs[i].frequency.value = noteNum2Freq(noteNum);
-        this.oscs[i].detune.value -= detune;
-    }
-
-}
-
-ScissorVoice.prototype.connect = function(target){
-  this.output.node.connect(target);
-}
-
 var context = WX._ctx;
 function getRandomInt (min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
-}
-
-function noteNum2Freq(num){
-    return Math.pow(2,(num-57)/12) * 440
-}
-
-function ADSR(){
-    this.node = context.createGain();
-    this.node.gain.value = 0.0;
-}
-
-ADSR.prototype.noteOn= function(delay, A,D, peakLevel, sustainlevel){
-    peakLevel = peakLevel || 0.3;
-    sustainlevel = sustainlevel || 0.1;
-
-    this.node.gain.linearRampToValueAtTime(0.0,delay + context.currentTime);
-    this.node.gain.linearRampToValueAtTime(peakLevel,delay + context.currentTime + A); // Attack
-    this.node.gain.linearRampToValueAtTime(sustainlevel,delay + context.currentTime + A + D);// Decay
-}
-
-ADSR.prototype.noteOff= function(delay, R, sustainlevel){
-    sustainlevel = sustainlevel || 0.1;
-
-    this.node.gain.linearRampToValueAtTime(sustainlevel,delay + context.currentTime );// Release
-    this.node.gain.linearRampToValueAtTime(0.0,delay + context.currentTime + R);// Release
-
-}
-
-ADSR.prototype.play= function(time, A,D,S,R, peakLevel, sustainlevel){
-    this.noteOn(time,A,D, peakLevel, sustainlevel);
-    this.noteOff(time+A+D+S,R, sustainlevel);
-}
-
-
-function Envelope(){
-    this.node = context.createGain();
-    this.node.gain.value = 1.0;
-}
-
-Envelope.prototype.noteOn= function(time, A,D,S,R){
-  //  this.node.gain.linearRampToValueAtTime(0.0,context.currentTime);
-
-}
-
-function Oscillator(noteNum, type){
-    this.node = context.createOscillator();
-  //  this.node.connect(compressor);
-    this.node.frequency.value = noteNum2Freq(noteNum);
-    this.node.type = type;
-    this.playing = false;
-    if ( type != null && (type == "sine"
-    || type == "square"
-    || type =="sawtooth"
-    || type == "triangle"))
-    {
-        this.node.type = type;
-    }
-}
-
-Oscillator.prototype.play = function(time){
-
-    this.node.start(time);
-
-}
-
-Oscillator.prototype.stop = function( time){
-        this.node.stop(time);
 }
 
 window.onload = function() {
@@ -179,7 +71,7 @@ window.onload = function() {
       $("#debug-panel").hide();
     }
 
-  $("#debug_button").click(function(){
+    $("#debug_button").click(function(){
         $("#debug-panel").hide();
         DEBUG = false;
     })
@@ -194,140 +86,21 @@ window.onload = function() {
                               navigator.webkitGetUserMedia ||
                               navigator.mozGetUserMedia ||
                               navigator.msGetUserMedia);
-    var level_original = context.createGain();
-    var level_reverb = context.createGain();
-    var gain_filterbank = context.createGain();
 
-    var panNode = context.createStereoPanner();
+    var audioSource1;
+    var audioSource2;
+    var analyser1 = context.createAnalyser();
+    var analyser2 = context.createAnalyser();
 
-    var pitch_convolver = [];
-    var pitch_convolver_id = 0;
-    var pitch_convolver_ADSR = [];
-    pitch_convolver[0] = context.createConvolver();
-    pitch_convolver[1] = context.createConvolver();
-    pitch_convolver_ADSR[0] = new ADSR();
-    pitch_convolver_ADSR[1] = new ADSR();
-    var pitch_convolver_level = context.createGain();
-    var reverb = context.createConvolver();
-    var reverb2 = context.createConvolver();
-    var chatter = context.createBufferSource();
-    var chatterStart = true;
-    var heartbeat = context.createBufferSource();
-    var ending = context.createBufferSource();
-    var heartbeatGainValue = 0;
-    var endingGainValue = 0;
+    analyser1.smoothingTimeConstant = 0.3;
+    analyser1.fftSize = 512;
 
-    var pause_handle = null;
-    var pause = null;
-    var pauseADSR = new ADSR();
-    pauseADSR.node.connect(level_reverb);
-    panNode.connect(reverb);
+    analyser2.smoothingTimeConstant = 0.3;
+    analyser2.fftSize = 512;
 
 
-    var chatter_filterGain = context.createGain();
-    var heartbeatGain = context.createGain();
-    var endingGain = context.createGain();
-    var chatter_reverbGain = context.createGain();
-    var sourceMic;
-    var sourceBuiltInMic;
-
-    var delay = WX.StereoDelay();
-    var filter = context.createBiquadFilter();
-    var noiseBurst =   WX.Noise({ output: 0.0 , type: "white"});
-    var noiseBurstadsr = new ADSR();
-    var noiseBurstAnalyser = context.createAnalyser();
-    var noiseBurstOn = false;
-
-    noiseBurstAnalyser.smoothingTimeConstant = 0.3;
-    noiseBurstAnalyser.fftSize = 512;
-
-    noiseBurst.to(noiseBurstadsr.node).to(noiseBurstAnalyser).to(level_original);
-
-    var reverseGate = WX.ConVerb({ mix: 0, output:0.2});
-    var filterOn = false;
-
-    reverseGate.to(delay).to(level_original);
-
-    var compressor = context.createDynamicsCompressor();
-    var masterGain = context.createGain();
-    var analyser = context.createAnalyser();
-
-    var triangle_osc = new Oscillator(22, 'triangle');
-    var triangle_adsr = new ADSR();
-    var triangle_drone = context.createGain();
-
-
-    var noise = WX.Noise({ output: 0.25 });
-    var fbank = WX.FilterBank();
-    var cverb = WX.ConVerb({ mix: 0.85 });
-
-    analyser.smoothingTimeConstant = 0.3;
-    analyser.fftSize = 512;
-
-    masterGain.gain.value =1.0;
-    level_reverb.gain.value = 0.0;
-    level_original.gain.value = 1.0;
-
-    chatter_filterGain.gain.value = 1.0;
-    chatter_reverbGain.gain.value = 0.0;
-    heartbeatGain.gain.value = 0.0;
-    endingGain.gain.value = 0.0;
-
-    compressor.threshold.value = 10;
-    compressor.ratio.value = 20;
-    compressor.reduction.value = -20;
-
-    filter.type = (typeof filter.type === 'string') ? 'bandpass' : 0; // LOWPASS
-    filter.frequency.value = 500;
-
-    //connection
-    compressor.connect(masterGain)
-    masterGain.connect(context.destination);
-    level_original.connect(compressor); // ONOFF live mic sound
-    level_reverb.connect(compressor);
-    pitch_convolver[0].connect(pitch_convolver_ADSR[0].node);
-    pitch_convolver[1].connect(pitch_convolver_ADSR[1].node);
-    pitch_convolver_ADSR[0].node.connect(pitch_convolver_level);
-    pitch_convolver_ADSR[1].node.connect(pitch_convolver_level);
-    pitch_convolver_level.connect(level_reverb);
-    pitch_convolver_ADSR[0].noteOn(0,0,0, 1, 1);
-
-    reverb.connect(level_reverb);
-    reverb2.connect(level_reverb);
-
-    fbank.set('scale', 'mixolydian');
-    fbank.set('pitch', 23);
-
-    heartbeat.connect(heartbeatGain).connect(level_reverb);
-    heartbeatGain.connect(analyser);
-
-    ending.connect(endingGain).connect(level_reverb);
-    endingGain.connect(analyser);
-
-
-    chatter.connect(analyser);
-    chatter.to(chatter_filterGain).connect(analyser);
-    chatter.to(chatter_reverbGain).connect(reverb);
-
-    var clip1 = {
-        name: 'Big Empty Church',
-        url: soundmap.reverb1
-    };
-    var clip2 = {
-        name: 'Reverse Gate',
-        url: soundmap.reverse_reverb
-    };
-if(enableSound){
-    WX.loadClip(clip2,function(){
-        reverseGate.setClip(clip2);
-    });
-    WX.loadClip(clip1, function() {
-        cverb.setClip(clip1);
-    });
-  }
-
-    var audioSelectVisual = document.querySelector('select#audioSource1');
-    var audioSelectAudio = document.querySelector('select#audioSource2');
+    var audioSelect1 = document.querySelector('select#audioSource1');
+    var audioSelect2 = document.querySelector('select#audioSource2');
 
     function getSourceID(){
       var MicId = this.item(this.selectedIndex).value;
@@ -355,36 +128,27 @@ if(enableSound){
              navigator.mediaDevices.getUserMedia (audioOpts).then(
             // Success callback
               function(stream) {
-                  if (sourceType == "visual") {
-                      sourceBuiltInMic =  context.createMediaStreamSource(stream);
-                      sourceBuiltInMic.connect(analyser); // ON/OFF
-                      console.log('builtin mic connected.');
+                  if (sourceType == "audioSource1") {
+                      audioSource1 =  context.createMediaStreamSource(stream);
+                      audioSource1.connect(analyser1); // ON/OFF
                   }
-                  else if (sourceType == "audio"){ // first selected (e.g. mic from audio interface)
-                      sourceMic = context.createMediaStreamSource(stream);
-                      sourceMic.connect(level_original); // ON/OFF
-                      if(droneState){
-                        sourceMic.connect(pitch_convolver[0]); // ON/OFF
-                        sourceMic.connect(pitch_convolver[1]); // ON/OFF
-                      }
-                      sourceMic.connect(reverb); // ON/OFF
-                      console.log('separate mic connected.');
+                  else if (sourceType == "audioSource2"){ // first selected (e.g. mic from audio interface)
+                      audioSource2 = context.createMediaStreamSource(stream);
+                      audioSource2.connect(analyser2); // ON/OFF
                   }
               })
               .catch(  function(err) {
                   console.log('The following gUM error occured: ' + err);
               }); // end of navigator.getUserMedia
         } else {
-
         console.log('getUserMedia not supported on your browser!');
-
         }
     }
 
-    audioSelectVisual.onchange = getSourceID;
-    audioSelectVisual.sourceType = "visual";
-    audioSelectAudio.onchange = getSourceID;
-    audioSelectAudio.sourceType = "audio";
+    audioSelect1.onchange = getSourceID;
+    audioSelect1.sourceType = "audioSource1";
+    audioSelect2.onchange = getSourceID;
+    audioSelect2.sourceType = "audioSource2";
 //https://simpl.info/getusermedia/sources/
     function gotSource(sourceInfo) {
         var option1 = document.createElement('option');
@@ -392,10 +156,10 @@ if(enableSound){
         option1.value = sourceInfo.deviceId;
         option2.value = sourceInfo.deviceId;
         if (sourceInfo.kind === 'audioinput') {
-          option1.text = sourceInfo.label || 'microphone ' + (audioSelectVisual.length);
-          option2.text = sourceInfo.label || 'microphone ' + (audioSelectVisual.length);
-        audioSelectVisual.appendChild(option1);
-        audioSelectAudio.appendChild(option2);
+          option1.text = sourceInfo.label || 'microphone ' + (audioSelect1.length);
+          option2.text = sourceInfo.label || 'microphone ' + (audioSelect1.length);
+        audioSelect1.appendChild(option1);
+        audioSelect2.appendChild(option2);
         } else {
           console.log('Some other kind of source: ', sourceInfo);
         }
@@ -413,21 +177,12 @@ if(enableSound){
     //  pitch_convolver.buffer = context.createBuffer(2, 2048, context.sampleRate);
 
     var buffers = {};
-    if (enableSound){
 
-      loadSounds(buffers, soundmap, function(){
-          pitch_convolver[0].buffer = buffers['june_C'];
-          reverb.buffer = buffers['ir1'];
-          reverb2.buffer = buffers['sus1'];
-          chatter.buffer = buffers['chatter'];
-          heartbeat.buffer = buffers['heartbeat'];
-          ending.buffer = buffers['nnote1'];
-      });
-    }
-    var pauseStart = false;
-    var amplitudeArray =  new Uint8Array(analyser.frequencyBinCount);
-    var amplitudeArray2 =  new Uint8Array(analyser.frequencyBinCount);
-    var amplitudeArray3 =  new Uint8Array(noiseBurstAnalyser.frequencyBinCount);
+
+    var analyzerFreqArray1 =  new Uint8Array(analyser1.frequencyBinCount);
+    var analyzerAmpArray1 =  new Uint8Array(analyser1.frequencyBinCount);
+    var analyzerFreqArray2 =  new Uint8Array(analyser2.frequencyBinCount);
+    var analyzerAmpArray2 =  new Uint8Array(analyser2.frequencyBinCount);
 
     // load the sound
     if(DEBUG==true){
@@ -514,57 +269,6 @@ if(enableSound){
 // keycode table is available here
 // https://css-tricks.com/snippets/javascript/javascript-keycodes/
 
-
-    function addLetter(code, strIndex, sizeFactor){
-        var alphabetIndex = String.fromCharCode(code).toLowerCase().charCodeAt(0) - 'a'.charCodeAt(0) + 1;
-        console.log("code: " + String.fromCharCode(code)+ " alphabetIndex:" + alphabetIndex)
-        if(alphabetIndex < 1 || alphabetIndex > 26 )
-          alphabetIndex = 0;
-        var cx = code % lettersPerSide;
-        var cy = Math.floor(code / lettersPerSide);
-        //  var localscaleX = scaleX * (1+sizeFactor);
-        var localOffset = offset * (1+sizeFactor*2.0);
-        var localY = currentLine[currentPage]*scaleY - (sizeFactor/4.0);
-        geo[currentPage][geoindex].vertices.push(
-            new THREE.Vector3( currIndex[currentPage]*scaleX, localY, 0 ), // left bottom
-            new THREE.Vector3( currIndex[currentPage]*scaleX+localOffset, localY, 0 ), //right bottom
-            new THREE.Vector3( currIndex[currentPage]*scaleX+localOffset, localY+localOffset, 0 ),// right top
-            new THREE.Vector3( currIndex[currentPage]*scaleX, localY+localOffset, 0 )// left top
-        );
-        //   console.log("sizeFactor:" + sizeFactor + " added(" + (j*scaleX) + "," + (j*scaleX + offset) +" strIndex : " + strIndex + ")");
-        for (var k=0; k<4;k++){
-          attributes.strIndex.value[strIndex*4+k] = strIndex;// THREE.Vector2(6.0,12.0);
-          attributes.alphabetIndex.value[strIndex*4+k] = alphabetIndex;// THREE.Vector2(6.0,12.0);
-        }
-        var face = new THREE.Face3(strIndex*4+0, strIndex*4+1, strIndex*4+2);
-        geo[currentPage][geoindex].faces.push(face);
-        face = new THREE.Face3(strIndex*4+0, strIndex*4+2, strIndex*4+3);
-        geo[currentPage][geoindex].faces.push(face);
-        var ox=(cx)/lettersPerSide, oy=(cy+0.05)/lettersPerSide, off=0.9/lettersPerSide;
-      //  var sz = lettersPerSide*fontSize;
-        geo[currentPage][geoindex].faceVertexUvs[0].push([
-            new THREE.Vector2( ox, oy+off ),
-            new THREE.Vector2( ox+off, oy+off ),
-            new THREE.Vector2( ox+off, oy )
-        ]);
-        geo[currentPage][geoindex].faceVertexUvs[0].push([
-            new THREE.Vector2( ox, oy+off ),
-            new THREE.Vector2( ox+off, oy ),
-            new THREE.Vector2( ox, oy )
-        ]);
-
-        if (code == 10 || code == 13 || currIndex[currentPage]  == letterPerLine) {
-            currentLine[currentPage]--;
-            prevJLastLine[currentPage] = currIndex[currentPage];
-            currIndex[currentPage]=0;
-        } else {
-            currIndex[currentPage]++;
-            if (rightMostPosition<currIndex[currentPage]){
-                rightMostXCoord = currIndex[currentPage]*scaleX+offset;
-                rightMostPosition = currIndex[currentPage];
-            }
-        }
-    } // the end of addLetter
 
 
     var removeLetterCodeMirror = function(line,ch){
@@ -733,9 +437,7 @@ if(enableSound){
     var centerX = (letterPerLine) * scaleX / 2.0;
     var centerY = (-linePerScreen * scaleY )/2.0;
 
-    for (i=0; i<str.length; i++) {
-        addLetter(str.charCodeAt(i),i,0);
-    }
+
     geo[1][geoindex] = geo[0][geoindex].clone();
     geo[2][geoindex] = geo[0][geoindex].clone();
     rightMostXCoord = (rightMostPosition+1) * scaleX;
@@ -755,13 +457,14 @@ if(enableSound){
         time: {type:"f", value:0.0},
         interval : {type:"f", value:0.0},
         volume : {type:"f", value:0.0},
-        timeDomain : { type:"fv1", value:new Float32Array(512)},
+        rotation : {type:"f", value:0.0},
+        timeDomain : { type:"fv1", value:new Float32Array(128)},
         coloredStr : { type:"iv1", value:coloredStr},
     //        timeDomain2 : { type:"fv1", value:new Float32Array(512)},
     //    center : { type: "v2", value: new THREE.Vector2(centerX,centerY) },
         map : { type: "t", value: tex },
         rightMostXCoord : { type: "f", value: 0.0 },
-        noise : {type:"f", value:0.0},
+        distort : {type:"f", value:0.0},
         fontcolor : {type:"f", value:0.0}
 
       //  xCoord : { type: "f", value: 0.0 }
@@ -772,8 +475,8 @@ if(enableSound){
     var shaderMaterial = new THREE.ShaderMaterial({
         uniforms : uniforms,
         attributes : attributes,
-        vertexShader : document.querySelector('#vertex0').textContent,
-        fragmentShader : document.querySelector('#fragment0').textContent
+        vertexShader : document.querySelector('#vertex2').textContent,
+        fragmentShader : document.querySelector('#fragment2').textContent
     });
 
     shaderMaterial.transparent = true;
@@ -804,80 +507,35 @@ if(enableSound){
 
       scene.add(top);
 
-/*
-    var w = 80 * 1.0;
-    var r = w * 1/2 * 1/Math.PI ;
-    //var material = new THREE.MeshBasicMaterial( { color: 0xff0000 } );
-
-    book = new THREE.Mesh(
-        geo[geoindex],
-        shaderMaterial
-    //    material
-    );
-
-    book.doubleSided = true;
-
-    var a = Math.PI/2;
-    book.position.x -= centerX;
-    book.position.y -= centerY;
-    book.position.z = 0;
-    top.add(book);
-
-    scene.add(top);
-*/
-
-    //    camera.position.y = 40;
+  //    camera.position.y = 40;
     camera.lookAt(scene.position);
-    /*   var sp1 = WX.SP1({ ampSustain: 1.0 });
 
-    sp1.to(WX.Master);
-
-    sp1.onReady = function () {
-        sp1.noteOn(60, 100);
-    };
-    sp1.loadClip({
-        name: 'drums',
-        url: './drums.mp3'
-    });*/
-    //  scene.add(geo);
-
-    var tickState = 0;
     var droneState = false;
     var snapToggle = false;
-    var tdscale = 5.0;
+    var tdscale = 5.0; // timedomain distortion scale
 
     var currengPage1StartTime = 0;
     var animate = function(t) {
 
-        var alpha = 0.8;
+        var alpha = 0.5;
         // get the average, bincount is fftsize / 2
-        analyser.getByteFrequencyData(amplitudeArray);
-        analyser.getByteTimeDomainData(amplitudeArray2);
+        analyser1.getByteFrequencyData(analyzerFreqArray1);
+        analyser1.getByteTimeDomainData(analyzerAmpArray1);
+        analyser2.getByteFrequencyData(analyzerFreqArray1);
+        analyser2.getByteTimeDomainData(analyzerAmpArray1);
 
-        if(noiseBurstOn){
-            noiseBurstAnalyser.getByteTimeDomainData(amplitudeArray3);
-            var noiseVolume = getAverageVolume(amplitudeArray3);
-            uniforms.noise.value = noiseVolume[0] / 128.0 * 0.005;
-        }
-
-        var resultArr = getAverageVolume(amplitudeArray);
+        var resultArr = getAverageVolume(analyzerFreqArray1);
         volume = alpha * (resultArr[0]/128.0) + (1-alpha) * volume;
         uniforms.volume.value = volume/1.5;
+        uniforms.time.value += 0.05;
+
         freqIndex = resultArr[1];
-        if(currentPage == 1 && lineindex[currentPage] <=8 ){
-            camera.rotation.y -= 0.00015;
-            uniforms.time.value += 0.05;
-            uniforms.interval.value = Math.max(Math.min(interval,1.0),0.0);
-        }
-        else if ( currentPage >= 1){
-            camera.rotation.y -= 0.00005;
-            uniforms.time.value -= 0.12;
-        }
+
         alpha = 0.85;
         uniforms.rightMostXCoord.value = rightMostXCoord;
 
-        for (var l=0;l<512;l++){
-            uniforms.timeDomain.value[l] = uniforms.timeDomain.value[l] * alpha + (1-alpha ) * (amplitudeArray2[l]/256.0-0.5) * tdscale;
+        for (var l=0;l<128;l++){
+            uniforms.timeDomain.value[l] = uniforms.timeDomain.value[l] * alpha + (1-alpha ) * (analyzerAmpArray1[l]/256.0-0.5) * tdscale;
         }
         try {
           renderer.render(scene, camera);
@@ -890,30 +548,16 @@ if(enableSound){
     };// the end of animate()
 
 
-
     animate(Date.now());
     //  document.body.appendChild(c);
     var down = false;
     var sx = 0, sy = 0;
     var toggle = true;
-
-
-
-
-    var scaleModel = fbank.getScaleModel();
-    //console.log(scaleModel);
-    var oscillator_list = {};
-
     var interval = 1, alpha = 0.9, lastKeyTime = 0;
     var index = 30;
     var previousKeyPressTime = context.currentTime;
     var first = true;
-    function equalPowerCrossfade (percent, gain1, gain2, amp1, amp2){
-        var level1 = Math.cos(percent*0.5*Math.PI);
-        var level2 = Math.cos((1.0-percent) * 0.5 * Math.PI);
-        gain1.gain.value = level1 * amp1;
-        gain2.gain.value = level2 * amp2 ;
-    }
+
 
     var keyInterval = 0;
     var keyIntervalCnt = 0;
@@ -925,7 +569,6 @@ if(enableSound){
             $("#keyup_debug").html(keycode);
             //        $("#start_down_debug").html(pos[0]);
             //        $("#end_down_debug").html(pos[1]);
-
             keyup_debug_color_index++;
             keyup_debug_color_index%=randomcolor.length;
             $("#keyup_debug").css("background-color", randomcolor[keyup_debug_color_index]);
@@ -933,7 +576,6 @@ if(enableSound){
     };
 
     var currentOuput = 0.0; // noise burst output
-
 
     window.onkeydown = function(ev){
         if(enableCodeMirror)editor.focus();
@@ -947,19 +589,6 @@ if(enableSound){
             // backspace is not supported for now. j
             ev.preventDefault();
         }
-       /* else if (keycode == 18){ // alt key
-          //  filterOn = !filterOn;
-            console.log("filteron:" + filterOn);
-            if (filterOn){
-                level_reverb.disconnect(0.001);
-                level_reverb.connect(filter);
-                filter.connect(compressor);
-            }else{
-                filter.disconnect(0.001);
-                level_reverb.disconnect(0.001);
-                level_reverb.connect(compressor);
-            }
-        }*/
         else if (keycode == 93 || keycode == 18 || keycode == 92){ // right command key
           pageContent[currentPage] = editor.getDoc().getValue();
           var prevgeoindex = geoindex;
@@ -973,140 +602,31 @@ if(enableSound){
           editor.getDoc().setValue(pageContent[currentPage]);
           editor.focus();
           editor.execCommand("goDocEnd")
-
-            if (currentPage == 2){
-                //
-                var source = context.createBufferSource();
-                var gain = context.createGain();
-                gain.gain.value = 0.4;
-                source.buffer = buffers['tick1'];
-                //source.playbackRate.value = 1 + Math.random()*2;
-                source.playbackRate.value = 0.3;
-                source.connect(gain);
-                gain.connect(compressor);
-                source.start(0);
-                if(chatterStart)
-                {
-                  chatter.start(0);
-                  chatterStart = false;
-                }
-                reverseGate.params.mix.set(0.0,context.currentTime,1);
-                reverseGate.params.mix.set(1.0,context.currentTime + 90,1);
-
-            }
-            else if (currentPage == 1){ // the 2nd page
-              // the 2nd page shader
-                var shaderMaterial = new THREE.ShaderMaterial({
-                    uniforms : uniforms,
-                    attributes : attributes,
-                    vertexShader : document.querySelector('#vertex2').textContent,
-                    fragmentShader : document.querySelector('#fragment2').textContent
-                });
-                shaderMaterial.transparent = true;
-                shaderMaterial.depthTest = false;
-                interval = 1.0;
-                uniforms.time.value = 0;
-                //for (var i=0; i< numPage-1; i++)
-                books[1].material = shaderMaterial;
-                if(!heartbeat.loop){
-                  heartbeat.start(0);
-                  heartbeat.loop = true;
-                }
-
-
-            }
-
+          if (currentPage == 1){ // the 2nd page
+            // the 2nd page shader
+              var shaderMaterial = new THREE.ShaderMaterial({
+                  uniforms : uniforms,
+                  attributes : attributes,
+                  vertexShader : document.querySelector('#vertex2').textContent,
+                  fragmentShader : document.querySelector('#fragment2').textContent
+              });
+              shaderMaterial.transparent = true;
+              shaderMaterial.depthTest = false;
+              uniforms.time.value = 0;
+              //for (var i=0; i< numPage-1; i++)
+              books[1].material = shaderMaterial;
+          }
         }
-        else if (currentPage ==2 && lineindex[currentPage] >4 && (keycode == 69 || keycode == 79)){ // either e or o
-        // clear the whole writing if commnad enter pressed.
 
-            var dur = (keyInterval+0.1) / (keyIntervalCnt+0.1) / 4;
-            noiseBurstadsr.play(0,dur, dur, dur, dur,1.0,0.1);
-
-            noiseBurstOn = true;
-            setTimeout(function(){
-                noiseBurstOn = false;
-                uniforms.noise.value = 0.0;
-            }, dur * 4000)
-        }
-        else if(ev.shiftKey == true && keycode == 13){ // shift enter
-            if ( currentPage == 2){
-                noiseBurstadsr.node.gain.linearRampToValueAtTime(1.0, context.currentTime );
-                noiseBurstadsr.node.gain.linearRampToValueAtTime(1.0, context.currentTime +8);
-                uniforms.time.value -= 0.1;
-                noiseBurstOn = true;
-                masterGain.gain.linearRampToValueAtTime(1.0,context.currentTime);
-                masterGain.gain.linearRampToValueAtTime(1.0,context.currentTime + 5);
-                masterGain.gain.linearRampToValueAtTime(0.0,context.currentTime + 12);
-            }
-        }
-          if(DEBUG){
-            $("#keydown_debug").html(keycode);
-    //        $("#start_down_debug").html(pos[0]);
-    //        $("#end_down_debug").html(pos[1]);
-
-            keydown_debug_color_index++;
-            keydown_debug_color_index%=randomcolor.length;
-            $("#keydown_debug").css("background-color", randomcolor[keydown_debug_color_index]);
+        if(DEBUG){
+          $("#keydown_debug").html(keycode);
+          keydown_debug_color_index++;
+          keydown_debug_color_index%=randomcolor.length;
+          $("#keydown_debug").css("background-color", randomcolor[keydown_debug_color_index]);
         }
          // THIS IS OLD onkeypress part starting
         var keycode = ev.which;
         //  return;
-        if(ev.ctrlKey == true){
-          // turn on keycode
-          var alphabetIndex = ev.key.toLowerCase().charCodeAt(0) - 'a'.charCodeAt(0) + 1;
-          if (currentPage >= 1 && alphabetIndex>=0 && alphabetIndex <=26){
-            coloredStr[alphabetIndex]++;
-            coloredStr[alphabetIndex]%=3;
-            uniforms.coloredStr.value = coloredStr;
-          }
-          else if(keycode == 189){
-            tdscale--;
-          }
-          else if(keycode == 187){
-            tdscale++;
-          }
-          else if (keycode == 49){ // 1 pressed
-              pitch_convolver[pitch_convolver_id].buffer = buffers['june_A'];
-              return;
-          } else if (keycode == 50){ // 2 pressed
-              pitch_convolver[pitch_convolver_id].buffer = buffers['june_B'];
-              return;
-          }
-          else if (keycode == 51){ // 3 pressed
-              pitch_convolver[pitch_convolver_id].buffer = buffers['june_C'];
-              return;
-          }
-          else if (keycode == 52){ // 4 pressed
-              pitch_convolver[pitch_convolver_id].buffer = buffers['june_D'];
-              return;
-          }
-          else if (keycode == 53){ // 5 pressed
-              pitch_convolver[pitch_convolver_id].buffer = buffers['june_E'];
-              return;
-          }
-          else if (keycode == 54){ // 6 pressed
-              pitch_convolver[pitch_convolver_id].buffer = buffers['june_F'];
-              return;
-          }
-          else if (keycode == 55){ // 7 pressed
-              pitch_convolver[pitch_convolver_id].buffer = buffers['june_G'];
-              return;
-          }
-          else if (keycode == 56){ // 8 pressed
-              pitch_convolver[pitch_convolver_id].buffer = buffers['june_A1'];
-              return;
-          }
-
-          return;
-        }
-
-
-        if ( ev.shiftKey == true && ev.which == 13) // shift_enter
-        {
-            strPage[currentPage] = "";
-        }
-
         // update the visual first.
         if (enableCodeMirror){
           var code = keycode;
@@ -1115,244 +635,16 @@ if(enableSound){
           var code = strPage[currentPage].charCodeAt(strPage[currentPage].length-1);
         }
 
-        if(keycode>=49 && keycode<=56){
-          //(delay, R, sustainlevel)
-          pitch_convolver_ADSR[pitch_convolver_id].noteOff(0,2,1);
-          pitch_convolver_id++;
-          pitch_convolver_id%=2;
-          pitch_convolver_ADSR[pitch_convolver_id].noteOn(0,1,0.1, 1, 1);
 
-        }
-
-        if(keycode == 57&&ev.metaKey){
+        if(keycode == 57&&ev.metaKey){// 9 + command key
           DEBUG = !DEBUG;
           $("#debug-panel").toggle();
         }
 
-        if(keycode == 48&&ev.metaKey){
+        if(keycode == 48&&ev.metaKey){ // 0 + command key
           snapToggle = !snapToggle
           rightMostXCoord = rightMostPosition*scaleX+offset;
         }
-
-
-
-
-
-
-        if(!enableCodeMirror){
-
-
-          var prevgeoindex = geoindex;
-          geoindex++;
-          geoindex%=2;
-          geo[currentPage][geoindex] = geo[currentPage][prevgeoindex].clone();
-          if ( currentPage == 2 && currentLine[2] <-7 && keycode >= 97 && keycode <=122)
-              keycode -= getRandomInt(0,1) * 32;
-          strPage[currentPage] +=String.fromCharCode(keycode);
-          if (lineindex[currentPage] <=11 && currentPage == 0)
-              volume = 0;
-          addLetter(strPage[currentPage].charCodeAt(strPage[currentPage].length-1),strPage[currentPage].length-1,volume);
-          if (currIndex[currentPage] == letterPerLine){
-              strPage[currentPage] += "\n";
-              addLetter(code,strPage[currentPage].length-1,0);
-          }
-        }
-
-        var currentTime = context.currentTime;
-
-        keyInterval += currentTime - previousKeyPressTime;
-        keyIntervalCnt ++;
-        previousKeyPressTime = currentTime;
-        // play dron if interval is over threhold?
-        if ( keycode == 13 || keycode == 32 ){ // space or enter
-            var avgInterval = keyInterval/keyIntervalCnt;
-                // play drone sound
-            console.log("space or enter : " + avgInterval + "(" + keyInterval + "," + keyIntervalCnt + ")");
-
-            if ( droneState && avgInterval > 0.4){
-                var randompitch = [26,27,28,29,29,34][getRandomInt(0,5)];
-                console.log("drone triggered : " + randompitch);
-                var osc = new Oscillator(randompitch, 'sawtooth');
-                var adsr = new ADSR();
-                osc.node.connect(adsr.node);
-                adsr.node.connect(reverb2);
-
-                osc.play(0);
-                osc.stop(context.currentTime +keyInterval);
-                var dur = keyInterval/4;
-                adsr.play(0,dur, dur, dur, dur,0.1,0.05);
-            }
-            keyInterval = 0;
-            keyIntervalCnt = 0;
-        }else if (keycode == 49 && ev.shiftKey == true ){
-          // disable drone
-          droneState = !droneState;
-          if(droneState){
-            //sourceMic.connect(pitch_convolver[0]); // ON/OFF
-            //sourceMic.connect(pitch_convolver[1]); // ON/OFF
-            pitch_convolver_level.gain.linearRampToValueAtTime(1.0, context.currentTime + 0.1);
-            gain_filterbank.gain.linearRampToValueAtTime(0.3, context.currentTime + 0.1);
-            triangle_drone.gain.linearRampToValueAtTime(1.0, context.currentTime + 0.1);
-          }else{
-            //sourceMic.disconnect(pitch_convolver[0]); // ON/OFF
-            //sourceMic.disconnect(pitch_convolver[1]); // ON/OFF
-            pitch_convolver_level.gain.linearRampToValueAtTime(0.0, context.currentTime + 0.1);
-            triangle_drone.gain.linearRampToValueAtTime(0.0, context.currentTime + 0.1);
-            gain_filterbank.gain.linearRampToValueAtTime(0.0, context.currentTime + 0.1);
-          }
-        }
-        else if (keycode == 191){ // question marks
-            tickState ++;
-            if (tickState == 1){
-               // reverseGate.set('mix', 1.0,context.currenTime + 10);
-
-                delay.params.mix.set(0.0,context.currentTime,1);
-                delay.params.mix.set(0.0,context.currentTime+60,1);
-                delay.params.mix.set(1.0,context.currentTime+90,1);
-                delay.params.mix.set(0.0,context.currentTime+120,1);
-
-                gain_filterbank.gain.value = 0.0;
-                noise.to(fbank).to(cverb).to(gain_filterbank);
-                chatter.to(fbank._inlet);
-
-
-                gain_filterbank.connect(compressor)
-                gain_filterbank.gain.linearRampToValueAtTime(0., context.currentTime);
-                if(droneState)gain_filterbank.gain.linearRampToValueAtTime(0.3, context.currentTime + 3);
-
-            }
-        }
-
-
-
-        //gain.connect(pitch_convolver);
-        //  gain.connect(level_reverb);
-        // pitch_convolver.connect(compressor);
-        //    gain.connect(context.destination);
-/*
-        if(Math.random() > 0.95){
-          var randomPitch = 24 + getRandomInt(-3,12);
-
-          var osc = new Oscillator(randomPitch, 'triangle');
-          var adsr = new ADSR();
-          osc.node.connect(adsr.node);
-          adsr.node.connect(level_reverb);
-
-          osc.play(0);
-          osc.stop(context.currentTime + 3.2);
-          adsr.play(0,0.1,0.1,2,1);
-        }
-*/
-
-        var currentTime = (new Date()).getTime();
-        if (lastKeyTime == 0)
-            lastKeyTime = currentTime;
-        interval = interval * alpha + (1-alpha) * (currentTime - lastKeyTime) / 1000.0;
-        if ((currentTime - lastKeyTime) / 1000.0 > 0.5)
-            interval = 1;
-        //interval = (currentTime - lastKeyTime);
-        //  console.log(interval);
-        lastKeyTime = currentTime;
-
-
-        if (tickState%2== 1){ // alternate by question mark.
-            var source = context.createBufferSource();
-            source.buffer = buffers['tick1'];
-            //source.playbackRate.value = 1 + Math.random()*2;
-            var freqNum = keycode;
-            if(ev.shiftKey){
-              freqNum-=32;
-            }
-            source.playbackRate.value = 0.2 + (freqNum-65) / 60*4;
-            source.connect(reverseGate._inlet);
-            source.start(0);
-        }
-
-        if (currentPage == 2){ // the third page
-            var length = editor.getDoc().getValue().length;
-            var percent = WX.clamp(length/numCharPage[currentPage],0,1.0);
-            // slowly increase
-            equalPowerCrossfade(percent, chatter_filterGain, chatter_reverbGain, 0.5, 0.1);
-            currentOuput = noiseBurst.get('output');
-            noiseBurst.params.output.set(currentOuput, context.currentTime, 1);
-            currentOuput = percent * 0.1;
-            noiseBurst.params.output.set(currentOuput, context.currentTime + 0.1, 1);
-        }
-
-        if (code == 10 || code == 13){ // enter or linebreak (carrige return)
-            lineindex[currentPage] = editor.getDoc().lineCount()-1;
-
-            fbank.set('scale', scaleModel[getRandomInt(0,3)].value, WX.now + 4, 2);
-           // fbank.set('pitch', fbank_pitchset[getRandomInt(0,3)]);
-            if (lineindex[currentPage] == 2 && currentPage == 0){ // the third line the first page
-              level_reverb.gain.linearRampToValueAtTime(0.0, context.currentTime )
-              level_reverb.gain.linearRampToValueAtTime(1.0, context.currentTime + 30)
-
-              if(droneState){
-                triangle_osc.node.connect(triangle_adsr.node);
-              }
-              triangle_adsr.node.connect(triangle_drone);
-              triangle_drone.connect(level_reverb);
-
-              triangle_osc.play(0);
-              // osc.stop(context.currentTime + 300);
-              //adsr.play(0,30,120,30,120,0.05,0.025);
-              triangle_adsr.noteOn(0,30,600,0.07,0.03);
-              triangle_osc.node.detune.linearRampToValueAtTime(0.0, context.currentTime);
-              triangle_osc.node.detune.linearRampToValueAtTime(0.0, context.currentTime + 30);
-              triangle_osc.node.detune.linearRampToValueAtTime(900, context.currentTime + 120);
-              triangle_osc.node.detune.linearRampToValueAtTime(200, context.currentTime + 240);
-            }
-            else if (lineindex[currentPage] == 4 && currentPage == 0){ // thr fifth line the first page
-                var shaderMaterial = new THREE.ShaderMaterial({
-                    uniforms : uniforms,
-                    attributes : attributes,
-                    vertexShader : document.querySelector('#vertex1').textContent,
-                    fragmentShader : document.querySelector('#fragment1').textContent
-                });
-                shaderMaterial.transparent = true;
-                shaderMaterial.depthTest = false;
-                // turn on reverb gain slowly.
-                for (var i=0; i< numPage; i++)
-                    books[i].material = shaderMaterial;
-
-           }else if (lineindex[currentPage] == 7&& currentPage == 2){
-             if(!ending.loop){
-               ending.start(0);
-               ending.loop = true;
-             }
-           }
-
-
-        }
-
-     //books[currentPage].geometry = geo[currentPage][geoindex];
-     // let's play pause until
-
-     if (!pauseFlag) return;
-     if (currentPage < 1) return;
-
-     if(pause_handle){
-       pause_handle.noteOff(1,0.1,0.5);
-       pause.stop(context.currentTime + 3)
-     }
-
-      pause = context.createBufferSource();
-      pause.loop = true;
-      pause_handle = new ADSR();
-      pause.connect(pause_handle.node);
-      pause_handle.node.connect(level_reverb);
-      var rn = Math.random();
-      if(rn < 0.5){
-        pause.buffer = buffers['pause1'];
-      }else {
-        pause.buffer = buffers['pause2'];
-      }
-      //source.playbackRate.value = 1 + Math.random()*2;
-      pause.playbackRate.value = (1 + (keycode%65) / 200*4)*0.2 * (keycode%4+1) ;
-      pause.start(context.currentTime + 3);
-      //pause_handle.noteOn(1,7,7, 0.3, 0);
-      pause_handle.play(3,12, 3, 3, 3,1.0,0.1)
     }
 
     window.onkeypress = function(ev){
@@ -1383,21 +675,10 @@ if(enableSound){
       socket.emit('message', '/wheel/'+ev.wheelDelta);
 
         var ds = (ev.detail < 0 || ev.wheelDelta > 0) ? (1/1.01) : 1.01;
-        if (ev.detail < 0 || ev.wheelDelta > 0) {
-          heartbeatGainValue += 0.01;
-          if(ending.loop)  endingGainValue -= 0.002;
-        }else{
-          heartbeatGainValue -= 0.01;
-          if(ending.loop)  endingGainValue += 0.002;
-        }
-
-        heartbeatGain.gain.value = WX.clamp(heartbeatGainValue,0,1);
-        endingGain.gain.value = WX.clamp(endingGainValue,0,1);
         zoom(ds);
         ev.preventDefault();
 
     };
-
     socket.on('message2', function(obj) {
       var osc_received = document.getElementById("osc_received");
       if(osc_received)
@@ -1406,22 +687,36 @@ if(enableSound){
       if(obj[0] == "/zoom"){
         zoomabs(obj[1]+1);
       }else if (obj[0] == "/camrotate"){
-        camera.rotation.x = obj[1] *3.14159;
-        camera.rotation.y = obj[2] *3.14159;
-        camera.rotation.z = obj[3] *3.14159;
+        camera.rotation.x = obj[1]/360 *3.14159;
+        camera.rotation.y = obj[2]/360 *3.14159;
+        camera.rotation.z = obj[3]/360 *3.14159;
       }
       else if(obj[0] == "/camtranslate"){
-        camera.position.x = obj[1]*50;
-        camera.position.y = obj[2]*50;
-        camera.position.z = obj[3]*50;
-      }else if(obj[0] == "/panic"){
+        camera.position.x = obj[1]/10;
+        camera.position.y = obj[2]/10;
+        camera.position.z = obj[3]/10;
+      }else if (obj[0] == "/rotation"){
+        if (!Number.isInteger(obj[1])){
+          alert("received osc message contains non-numbers : ", obj);
+          return;
+        }
+        uniforms.rotation.value = parseFloat(obj[1])/100.0;
+      }
+      else if (obj[0] == "/distort"){
+        if (!Number.isInteger(obj[1])){
+          alert("received osc message contains non-numbers : ", obj);
+          return;
+        }
+        uniforms.distort.value = parseFloat(obj[1])/10000.0;
+      }
+      else if(obj[0] == "/panic"){
         panicCamera();
       }else if(obj[0] == "/color"){
         console.log(obj[1]| 0x000000);
         if(obj.length==4){
-          renderer.setClearColor('rgb('+parseInt(obj[1]*255)+","+parseInt(obj[2]*255)+","+parseInt(obj[3]*255)+")");
+          renderer.setClearColor('rgb('+parseInt(obj[1])+","+parseInt(obj[2])+","+parseInt(obj[3])+")");
         }else if (obj.length == 2){
-          var grayColor = parseInt(obj[1]*255);
+          var grayColor = parseInt(obj[1]);
             renderer.setClearColor('rgb('+grayColor+","+grayColor+","+grayColor+")");
         }else{
           alert("We need 3 parameters for /color");
@@ -1430,22 +725,28 @@ if(enableSound){
         if(obj.length!=2){
           alert("We need 1 parameters for /color")
         }else{
-          uniforms.fontcolor.value = obj[1];
+          uniforms.fontcolor.value = obj[1]/255.0;
         }
       }else if (obj[0] == "/add"){
-        var content = obj[1];
         var doc = editor.getDoc();
-        if(obj.length>2){
-          var  line = parseInt(obj[2]),
-          ch = parseInt(obj[3]);
+        var content = obj[1];
+        var replace = false;
+        if(obj.length>=4){ // location is specified
+          var  line = parseInt(obj[1]),
+          ch = parseInt(obj[2]);
+          content = obj[3];
           if (!Number.isInteger(line) || !Number.isInteger(ch)){
             alert("received osc message contains non-numbers : ", obj);
             return;
           }
-
-        }else{
+          if(obj.length==5){
+              replace = (obj[4] == 'true');
+          }
+        }else if (obj.length==2){
           var line = doc.getCursor().line,
           ch = doc.getCursor().ch; // gets the line number in the cursor position
+        }else{
+          alert("/add expect one or three parameters.");
         }
         oscAdded = true;
 
@@ -1465,20 +766,39 @@ if(enableSound){
               ch: ch // set the character position to the end of the line
           });
         }else{
+
+          // pad line
+          while(doc.size <= line){
+            // padding lines
+            doc.replaceRange("\n", { // create a new object to avoid mutation of the original selection
+                line: line,
+                ch: ch // set the character position to the end of the line
+            });
+          }
+          // pad space
+          if(doc.getLine(line).length < ch){
+            doc.replaceRange("".padStart(ch-doc.getLine(line).length," "),{
+              line:line,
+              ch:ch
+            })
+          }
+          var toline = line;
+          var toch = ch;
+          if(replace){
+            var arr = str.split("\r\n|\r|\n");
+            toline = line + arr.length-1;
+            toch = ch + content.length;
+            if(toline > line){
+              toch = arr[arr.length-1].length
+            }
+          }
           doc.replaceRange(content, { // create a new object to avoid mutation of the original selection
               line: line,
               ch: ch // set the character position to the end of the line
+          },{ // create a new object to avoid mutation of the original selection
+              line: toline,
+              ch: toch // set the character position to the end of the line
           });
-          if (tickState%2== 1){ // alternate by question mark.
-              var source = context.createBufferSource();
-              source.buffer = buffers['tick1'];
-              //source.playbackRate.value = 1 + Math.random()*2;
-              var freqNum = content.charCodeAt(0)
-              ;
-              source.playbackRate.value = 0.2 + (freqNum-65) / 60*4;
-              source.connect(reverseGate._inlet);
-              source.start(0);
-          }
         }
       }
       else if (obj[0] == "/remove"){
@@ -1514,8 +834,6 @@ if(enableSound){
 
             var dx = ev.clientX - sx;
             var dy = ev.clientY - sy;
-      //      books[currentPage].rotation.x += dy/50.0;
-    //        books[currentPage].rotation.y += dx/50.0;
             camera.rotation.y += dx/500 * (camera.fov/45);
             //camera.rotation.y += dx/500 * (camera.fov/45);;
             camera.rotation.x += dy/500 * (camera.fov/45);
@@ -1551,34 +869,11 @@ if(enableSound){
             sx = ev.clientX;
             sy = ev.clientY;
        }
-//function ScissorVoice(noteNum, numOsc, oscType, detune){
-        if ( currentPage >= 1 || reached){
-          reached = true;
-            if (drone){
-                drone.output.noteOff(0,1,drone.maxGain*2.0);
-                drone.stop(context.currentTime + 1);
-            }
-           drone = new ScissorVoice(pitchListforDrone[pitchIndex]+12,getRandomInt(7,10),"triangle", 12);
-           //drone = new ScissorVoice(pitchListforDrone[pitchIndex],getRandomInt(3,10),"triangle", [3,5,7,12][getRandomInt(0,3)]);
-           drone.connect(panNode);
-           panNode.pan.value = 0;
-           drone.detune(getRandomInt(0,100));
-
-           drone.output.noteOn(0,1,6000,drone.maxGain*5.0,drone.maxGain*5.0);
-           pitchIndex+=getRandomInt(0,1);
-           pitchIndex %= pitchListforDrone.length;
-        }
     };
     window.onmouseup = function(ev){
         down = false;
         socket.emit('message', '/mouseUp/'+ev.clientX+ '/' + ev.clientY);
 
-        if ( drone && currentPage >= 1)
-        { // ADSR.prototype.noteOff= function(delay, R, sustainlevel){
-            drone.output.noteOff(0,1,drone.maxGain);
-            drone.stop(context.currentTime + 1);
-            delete drone;
-        }
     };
 
 
@@ -1618,13 +913,6 @@ if(enableSound){
           removeLetterCodeMirror(startLine,j);
         }
 
-/*
-        for (var i=1; i< change.removed.length-1; i++){
-          for (var j=0; j<change.removed[i].length; j++){
-            removeLetterCodeMirror(startLine+i,j);
-          }
-        }
-*/
         if (startLine != endLine){
           for (var j=0; j<endCh; j++){
             removeLetterCodeMirror(endLine,j);
@@ -1744,43 +1032,16 @@ if(enableSound){
           }
         }
 
-// sanity check
 
       }//
 
       books[currentPage].geometry = geo[currentPage][geoindex];
-/*
-
-      if (instance.getDoc().lineCount() != cmGrid[currentPage].length && !(instance.getDoc().lineCount()==1&&cmGrid[currentPage].length==0)){
-
-        console.error("line does not match");
-        debugger;
-      }
-
-      if(!(instance.getDoc().lineCount()==1&&cmGrid[currentPage].length==0)){
-        for (var i=0; i<instance.getDoc().lineCount(); i++){
-          if(instance.getDoc().getLine(i).length!= cmGrid[currentPage][i].length){
-            console.error("line", i, "doesnot match");
-            debugger;
-          }
-          for (var j=0; j<instance.getDoc().getLine(i).length; j++){
-            if(instance.getDoc().getLine(i)[j]!= cmGrid[currentPage][i][j].char){
-              console.error("character", i, "doesnot match");
-              debugger;
-            }
-          }
-        }
-      }
-
-*/
 
     };
     if(enableCodeMirror){
         editor.on("change", changeCodeMirrorFunc);
     }
 
-    //editor.on("cursorActivity", cursorCodeMirrorFunc);
-    //editor.on("scroll", viewPortchangeCodeMirrorFunc);
 
 
 

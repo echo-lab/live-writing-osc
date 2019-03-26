@@ -7,38 +7,37 @@
 		"email": "vilson@void.cc"
 	},
 	"contributors": [
-	{
-		"name": "Hans Hübner",
-		"email": "hans.huebner@gmail.com"
-	},
-	{
-		"name": "Andy Smith",
-		"email": "jabber@term.ie"
-	},
-	{
-		"name": "Myles Borins",
-		"email": "myles.borins@gmail.com"
-	},
-	{
-		"name": "Hideyuki Saito",
-		"email": "hideyuki@uniba.jp"
-	},
-	{
-		"name": "Takuro Yoshida",
-		"email": "american423@gmail.com"
-	}
-
+		{
+			"name": "Hans Hübner",
+			"email": "hans.huebner@gmail.com"
+		},
+		{
+			"name": "Andy Smith",
+			"email": "jabber@term.ie"
+		},
+		{
+			"name": "Myles Borins",
+			"email": "myles.borins@gmail.com"
+		},
+		{
+			"name": "Hideyuki Saito",
+			"email": "hideyuki@uniba.jp"
+		},
+		{
+			"name": "Takuro Yoshida",
+			"email": "american423@gmail.com"
+		}
 	],
 	"dependencies": {
 		"node-osc": "latest",
 		"socket.io": "latest",
-		"node-static":"latest"
+		"node-static": "latest"
 	},
 	"keywords": [
 		"osc",
 		"socket",
-                "websockets",
-                "music"
+		"websockets",
+		"music"
 	],
 	"repository": {
 		"type": "git",

@@ -1,7 +1,7 @@
 
 <html>
   <head>
-    <title>NIME 2017 DISAPPEARING</title>
+    <title>susurros</title>
     <link rel="stylesheet" type="text/css" href="../css/main.css"/>
     <link rel="stylesheet" type="text/css" href="./main.css"/>
       <link rel="stylesheet" type="text/css" href="../css/jquery-ui.min.css"/>
@@ -40,14 +40,14 @@
       <script id="vertex1" type="text/x-glsl-vert">
         varying vec2 vUv;
         uniform float rightMostXCoord;
-        uniform float timeDomain[512];
+        uniform float timeDomain[128];
         uniform float volume;
         uniform int coloredStr[27];
         attribute float alphabetIndex;
         void main() {
             float xCoord = position.x/rightMostXCoord;
             vec4 fpos = vec4( position, 1.0 );
-            fpos.y = fpos.y + timeDomain[int(xCoord*250.0)];
+            fpos.y = fpos.y + timeDomain[int(xCoord*128.0)];
             vec4 p = projectionMatrix * modelViewMatrix * fpos;
             vUv = uv;
             gl_Position = p;
@@ -89,8 +89,9 @@
       //  varying float xCoord;
         uniform float rightMostXCoord;
         uniform float time;
-        uniform float timeDomain[512];
+        uniform float timeDomain[128];
         uniform float volume;
+        uniform float rotation;
         uniform int coloredStr[27];
         attribute float alphabetIndex;
       //  varying float index;
@@ -105,13 +106,14 @@
           vec4 fpos = vec4(position,1.0);
           //  fpos.x += -35.0;
           float xCoord = position.x/rightMostXCoord;
-          fpos.y = fpos.y + timeDomain[int(xCoord*250.0)];
+          fpos.y = fpos.y + timeDomain[int(xCoord*128.0)];
           float speed = 1.0-exp(-time*0.003);
-          fpos.z += ((sin(strIndex+time*2.0)))*(speed) * 1.0;
-          fpos.y += ((cos(strIndex+time*2.0)))*(speed)* 1.0;
+          fpos.x += ((sin(strIndex+time*2.0)))*(rotation) * 1.0;
+          fpos.z += ((sin(strIndex+time*2.0)))*(rotation) * 1.0;
+          fpos.y += ((cos(strIndex+time*2.0)))*(rotation)* 1.0;
           vec4 mvPosition = modelViewMatrix * fpos;
-          mvPosition.y += 1.0*sin(time*0.5+mvPosition.x/25.0)*(speed);
-          mvPosition.x -= 1.0*cos(time*0.5+mvPosition.y/25.0)*(speed);
+      //    mvPosition.y += 1.0*sin(volume*0.5+mvPosition.x/25.0)*(rotation*10.0);
+      //    mvPosition.x -= 1.0*cos(volume*0.5+mvPosition.y/25.0)*(rotation*10.0);
           vec4 p = projectionMatrix * mvPosition;
           vUv = uv;
           gl_Position = p;
@@ -122,7 +124,7 @@
         varying vec2 vUv;
         uniform float interval;
         uniform sampler2D map;
-        uniform float noise;
+        uniform float distort;
         uniform float time;
         uniform float fontcolor;
 
@@ -130,8 +132,8 @@
         void main() {
           vec2 uv = vUv;
 
-          uv.y = uv.y + sin(uv.x  * 1000.0 * time)* noise ;//+ sin(uv.x * 2000.0)*0.001 * volume2;
-          uv.x = uv.x + cos(tan(uv.y)  * 1000.0 * time)* noise ;
+          uv.y = uv.y + sin(uv.x  * 1000.0 * time)* distort ;//+ sin(uv.x * 2000.0)*0.001 * volume2;
+          uv.x = uv.x + cos(uv.y  * 900.0 * time)* distort ;
           vec4 diffuse = texture2D(map, uv);
          /*  vec4 diffuse_white = diffuse;
           //vec4 diffuse_green = diffuse;
@@ -159,7 +161,7 @@
         //  varying float xCoord;
         uniform float rightMostXCoord;
         uniform float time;
-        uniform float timeDomain[512];
+        uniform float timeDomain[128];
         uniform float volume;
         uniform int coloredStr[27];
         attribute float alphabetIndex;
@@ -176,7 +178,7 @@
           vec4 fpos = vec4(position,1.0);
           //  fpos.x += -35.0;
           float xCoord = position.x/rightMostXCoord;
-          fpos.y = fpos.y + timeDomain[int(xCoord*250.0)];
+          fpos.y = fpos.y + timeDomain[int(xCoord*128.0)];
 
           fpos.z += ((sin(strIndex+time*2.0)))*(1.0-interval) * 1.0;
           fpos.y += ((cos(strIndex+time*2.0)))*(1.0-interval)* 1.0;
@@ -245,11 +247,11 @@
   <body>
 
   <div id= "micselect" class="select">
-    <label for="audioSource1">Visual Feedback: </label>
+    <label for="audioSource1">Audio1: </label>
     <select id="audioSource1"><option>select your mic</select>
-    <label for="audioSource2">Sonic Feedback: </label>
+    <label for="audioSource2">Audio2: </label>
     <select id="audioSource2"><option>select your mic</select>
-    <button id="hide">hide</button> press right command(window) key to turn the page! Use Chrome!
+    <button id="hide">hide</button>Use Chrome!
   </div>
   <div id = "debug-panel">
     <button id="debug_button">set debug to false</button>
