@@ -687,9 +687,9 @@ window.onload = function() {
       if(obj[0] == "/zoom"){
         zoomabs(obj[1]+1);
       }else if (obj[0] == "/camrotate"){
-        camera.rotation.x = obj[1]/360 *3.14159;
-        camera.rotation.y = obj[2]/360 *3.14159;
-        camera.rotation.z = obj[3]/360 *3.14159;
+        camera.rotation.x = obj[1]/180 *3.14159;
+        camera.rotation.y = obj[2]/180 *3.14159;
+        camera.rotation.z = obj[3]/180 *3.14159;
       }
       else if(obj[0] == "/camtranslate"){
         camera.position.x = obj[1]/10;

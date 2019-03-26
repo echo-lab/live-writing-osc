@@ -23,11 +23,15 @@
    - `/mosedown/[x coodrinate] [y coodrinate]`
    - `/wheel/[wheel data]`
 - receving port : 3333 (App --> LW)
- - types
-    - `/zoom [dx]`
-    - `/camrotate [dx-angle] [dy-angle] [dz-angle]`
-    - `/camtranslate [dx] [dy] [dz]`
+- types
+    - `/camrotate [x-angle] [y-angle] [z-angle]` : in the unit of degree
+    - `/camtranslate [x] [y] [z]` : some number between [-300,300]
     - `/add [row] [col] [content]` : insert [content] at position (row, col)
     - `/add [row] [col] [content] true` : replace [content] at position (row, col)
     - `/add [content]` : append [content] at the current cursor position (typically the last one. )
+    - `/rotation [scale]` : scale of the rotation effect. [0,]
+    - `/distort [scale]` : scale of the letter distortion [0,100]
+    - `/color [red] [green] [blue]` : the background color RGB value [0,255]
+    - `/color [greyscale]` : the background color in grayscale [0,255]
+    - `/fontcolor [greyscale]`:  the font color in grayscale [0,255]
 - reference
