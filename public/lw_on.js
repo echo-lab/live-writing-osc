@@ -711,6 +711,10 @@ window.onload = function() {
       }
       else if(obj[0] == "/panic"){
         panicCamera();
+      }
+      else if(obj[0] == "/clear"){
+        editor.getDoc().setSelection({line:0, ch:0}, {line:editor.getDoc().size+1, ch:0});
+        editor.getDoc().replaceSelection("");
       }else if(obj[0] == "/color"){
         console.log(obj[1]| 0x000000);
         if(obj.length==4){
