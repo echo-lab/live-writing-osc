@@ -2,3 +2,5 @@
 node_modules/*
 
 osc-web/
+osc-side/.DS_Store
+.DS_Store

@@ -12,6 +12,11 @@ socket.on('connect_failed', function(obj){
 });
 
 
+var port ="";
+
+while(isNaN(parseInt(port)) || ( parseInt(port) < 1024 && parseInt(port)>65535)){
+  port =  prompt("Please enter port number that the livewriting will listen to", "3333");
+}
 
 
 socket.on('connect', function() {
@@ -22,7 +27,7 @@ socket.on('connect', function() {
      socket.emit('config',
          {
              server: {
-                 port: 3333,// listening to 3333
+                 port: port,// listening to 3333
                  host: '127.0.0.1'
              },
              client: {
