@@ -14,8 +14,8 @@ socket.on('connect_failed', function(obj){
 
 var port ="";
 
-while(isNaN(parseInt(port)) || ( parseInt(port) < 1024 && parseInt(port)>65535)){
-  port =  prompt("Please enter port number that the livewriting will listen to", "3333");
+while(isNaN(parseInt(port)) || parseInt(port) < 1024 || parseInt(port)>65535){
+  port =  prompt("Please enter port number [1024,65535] that the livewriting will listen to", "3333");
 }
 
 
@@ -402,8 +402,7 @@ window.onload = function() {
     // FIME (Text vIsualization for Musical Expression
     //   var BOOK="H";
 
-    var tex = getKeyTabular(fontSize,"Monospace",lettersPerSide);
-
+    var tex = getKeyTabular(fontSize,"Courier New",lettersPerSide);
     tex.flipY = false;
     tex.needsUpdate = true;
 
