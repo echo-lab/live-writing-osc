@@ -815,6 +815,7 @@ window.onload = function() {
             content = content.replace('\\\'O','\xD3' );
             content = content.replace('\\\'U','\xDA' );
             content = content.replace('\\\'N','\xD1' );
+            content = content.replace('\\n','\n')
           }
           doc.replaceRange(content, { // create a new object to avoid mutation of the original selection
               line: line,
