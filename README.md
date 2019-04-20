@@ -34,4 +34,5 @@
     - `/color [red] [green] [blue]` : the background color RGB value [0,255]
     - `/color [greyscale]` : the background color in grayscale [0,255]
     - `/fontcolor [greyscale]`:  the font color in grayscale [0,255]
+    - `/remove [start line] [start ch] [end line] [end ch]`
 - reference

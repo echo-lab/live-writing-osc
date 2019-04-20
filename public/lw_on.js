@@ -800,6 +800,22 @@ window.onload = function() {
               toch = arr[arr.length-1].length
             }
           }
+
+          if(content.search(/\\/)>=0){
+            content = content.replace('\\\'a','\xE1' );
+            content = content.replace('\\\'e','\xE9' );
+            content = content.replace('\\\'i','\xED' );
+            content = content.replace('\\\'o','\xF3' );
+            content = content.replace('\\\'u','\xFA' );
+            content = content.replace('\\\'n','\xF1' );
+
+            content = content.replace('\\\'A','\xC1' );
+            content = content.replace('\\\'E','\xC9' );
+            content = content.replace('\\\'I','\xCD' );
+            content = content.replace('\\\'O','\xD3' );
+            content = content.replace('\\\'U','\xDA' );
+            content = content.replace('\\\'N','\xD1' );
+          }
           doc.replaceRange(content, { // create a new object to avoid mutation of the original selection
               line: line,
               ch: ch // set the character position to the end of the line
