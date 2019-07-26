@@ -609,7 +609,8 @@ window.onload = function() {
         map : { type: "t", value: tex },
         rightMostXCoord : { type: "f", value: 0.0 },
         distort : {type:"f", value:0.0},
-        fontcolor : {type:"f", value:0.0}
+        fontcolor : {type:"f", value:0.0},
+        alpha : {type:"f", value:0.0}
 
       //  xCoord : { type: "f", value: 0.0 }
     };
@@ -827,7 +828,7 @@ window.onload = function() {
         osc_received.innerHTML = obj;
       console.log("received osc messages", obj);
       if(obj[0] == "/zoom"){
-        zoomabs(obj[1]+1);
+        zoomabs(obj[1]/255.0+1);
       }else if (obj[0] == "/camrotate"){
         camera.rotation.x = obj[1]/180 *3.14159;
         camera.rotation.y = obj[2]/180 *3.14159;
@@ -872,6 +873,12 @@ window.onload = function() {
           alert("We need 1 parameters for /color")
         }else{
           uniforms.fontcolor.value = obj[1]/255.0;
+        }
+      }else if(obj[0] == "/alpha"){
+        if(obj.length!=2){
+          alert("We need 1 parameters for /alpha")
+        }else{
+          uniforms.alpha.value = obj[1]/255.0;
         }
       }else if (obj[0] == "/add"){
         var doc = editor.getDoc();

@@ -22,14 +22,14 @@
         varying vec2 vUv;
         uniform sampler2D map;
         uniform float fontcolor;
-
-
+        uniform float alpha;
         void main() {
           vec4 diffuse = texture2D(map, vUv);
           vec4 diffuse_color = diffuse;
           diffuse_color.r = fontcolor;
           diffuse_color.g = fontcolor;
           diffuse_color.b = fontcolor;
+          diffuse_color.a = alpha;
           vec4 mix_diffuse = mix(diffuse, diffuse_color,1.0);
 
           gl_FragColor = mix_diffuse;//vec4(mix_diffuse.rgb, opacity);*/
@@ -127,6 +127,7 @@
         uniform float distort;
         uniform float time;
         uniform float fontcolor;
+        uniform float alpha;
 
        // int index2 = 20;
         void main() {
@@ -149,6 +150,8 @@
           diffuse_color.r = fontcolor;
           diffuse_color.g = fontcolor;
           diffuse_color.b = fontcolor;
+        //  diffuse_color.a = alpha;
+
           vec4 mix_diffuse = mix(diffuse, diffuse_color,1.0);
 
           gl_FragColor = mix_diffuse;
