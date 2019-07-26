@@ -4,19 +4,268 @@ var cursorColor = 0xa3c6ff;
 var oscAdded = false;
 var oscRemoved = false;
 //socket = io.connect('https://localhost', { port: 8081, rememberTransport: false});
-var socket = io('http://localhost:8081');
+//var socket = io('http://localhost:8081');
 
-console.log('oi');
 socket.on('connect_failed', function(obj){
     console.log('Connection Failed\n', obj);
 });
 
+var audioSource1;
+var audioSource2;
+var analyser1;
+var analyser2;
+
+function audioContextReady(){
+  // Start off by initializing a new context.
+  context = new (window.AudioContext || window.webkitAudioContext)();
+  var compressor = context.createDynamicsCompressor();
+      compressor.threshold.value = 10;
+      compressor.ratio.value = 20;
+      compressor.reduction.value = -20;
+  compressor.connect(context.destination);
+
+
+  if (!context.createGain)
+    context.createGain = context.createGainNode;
+  if (!context.createDelay)
+    context.createDelay = context.createDelayNode;
+  if (!context.createScriptProcessor)
+    context.createScriptProcessor = context.createJavaScriptNode;
+
+  // shim layer with setTimeout fallback
+  window.requestAnimFrame = (function(){
+  return  window.requestAnimationFrame       ||
+    window.webkitRequestAnimationFrame ||
+    window.mozRequestAnimationFrame    ||
+    window.oRequestAnimationFrame      ||
+    window.msRequestAnimationFrame     ||
+    function( callback ){
+    window.setTimeout(callback, 1000 / 60);
+  };
+  })();
+
+
+  function playSound(buffer, time) {
+    var source = context.createBufferSource();
+    source.buffer = buffer;
+    source.connect(context.destination);
+    source[source.start ? 'start' : 'noteOn'](time);
+  }
+
+  function loadSounds(obj, soundMap, callback) {
+    // Array-ify
+    var names = [];
+    var paths = [];
+    for (var name in soundMap) {
+      var path = soundMap[name];
+      names.push(name);
+      paths.push(path);
+    }
+    bufferLoader = new BufferLoader(context, paths, function(bufferList) {
+      for (var i = 0; i < bufferList.length; i++) {
+        var buffer = bufferList[i];
+        var name = names[i];
+        obj[name] = buffer;
+      }
+      if (callback) {
+        callback();
+      }
+    });
+    bufferLoader.load();
+  }
+
+  BufferLoader = function (context, urlList, callback) {
+    this.context = context;
+    this.urlList = urlList;
+    this.onload = callback;
+    this.bufferList = new Array();
+    this.loadCount = 0;
+  }
+
+  hasGetUserMedia = function () {
+    return !!(navigator.getUserMedia || navigator.webkitGetUserMedia ||
+              navigator.mozGetUserMedia || navigator.msGetUserMedia);
+  }
+
+  BufferLoader.prototype.loadBuffer = function(url, index) {
+    // Load buffer asynchronously
+    var request = new XMLHttpRequest();
+    request.open("GET", url, true);
+    request.responseType = "arraybuffer";
+
+    var loader = this;
+
+    request.onload = function() {
+      // Asynchronously decode the audio file data in request.response
+      loader.context.decodeAudioData(
+        request.response,
+        function(buffer) {
+          if (!buffer) {
+            alert('error decoding file data: ' + url);
+            return;
+          }
+          loader.bufferList[index] = buffer;
+          if (++loader.loadCount == loader.urlList.length)
+            loader.onload(loader.bufferList);
+        },
+        function(error) {
+          console.error('decodeAudioData error', error);
+        }
+      );
+    }
+
+    request.onerror = function() {
+      alert('BufferLoader: XHR error');
+    }
+
+    request.send();
+  };
+
+  BufferLoader.prototype.load = function() {
+    for (var i = 0; i < this.urlList.length; ++i)
+    this.loadBuffer(this.urlList[i], i);
+  };
+
+
+  if (!hasGetUserMedia()) {
+      alert('getUserMedia() is not supported in your browser. Please visit http://caniuse.com/#feat=stream to see web browsers available for this demo.');
+  }
+
+  context.resume().then(() => {
+    console.log('Playback resumed successfully');
+  });
+
+  volume = 0;
+  freqIndex = 0;
+
+  navigator.getUserMedia = (navigator.getUserMedia ||
+                            navigator.webkitGetUserMedia ||
+                            navigator.mozGetUserMedia ||
+                            navigator.msGetUserMedia);
+
+  analyser1 = context.createAnalyser();
+  analyser2 = context.createAnalyser();
+
+  analyser1.smoothingTimeConstant = 0.3;
+  analyser1.fftSize = 512;
+
+  analyser2.smoothingTimeConstant = 0.3;
+  analyser2.fftSize = 512;
+
+
+  var audioSelect1 = document.querySelector('select#audioSource1');
+  var audioSelect2 = document.querySelector('select#audioSource2');
+
+  function getSourceID(){
+    var MicId = this.item(this.selectedIndex).value;
+    var sourceType = this.sourceType;
+      if (navigator.getUserMedia) {
+          console.log('getUserMedia supported.');
+          var audioOpts = {
+            audio: {
+              optional: [
+                //{sourceId: audio_source},  // do it like this to take the default audio src
+                {googAutoGainControl: false},
+                {googAutoGainControl2: false},
+                {googEchoCancellation: false},
+                {googEchoCancellation2: false},
+                {googNoiseSuppression: false},
+                {googNoiseSuppression2: false},
+                {googHighpassFilter: false},
+                {googTypingNoiseDetection: false},
+                {googAudioMirroring: false},
+                {sourceId: MicId}
+              ]
+           },
+           video: false
+          };
+           navigator.mediaDevices.getUserMedia (audioOpts).then(
+          // Success callback
+            function(stream) {
+                if (sourceType == "audioSource1") {
+                    audioSource1 =  context.createMediaStreamSource(stream);
+                    audioSource1.connect(analyser1); // ON/OFF
+                }
+                else if (sourceType == "audioSource2"){ // first selected (e.g. mic from audio interface)
+                    audioSource2 = context.createMediaStreamSource(stream);
+                    audioSource2.connect(analyser2); // ON/OFF
+                }
+            })
+            .catch(  function(err) {
+                console.log('The following gUM error occured: ' + err);
+            }); // end of navigator.getUserMedia
+      } else {
+      console.log('getUserMedia not supported on your browser!');
+      }
+  }
+
+  audioSelect1.onchange = getSourceID;
+  audioSelect1.sourceType = "audioSource1";
+  audioSelect2.onchange = getSourceID;
+  audioSelect2.sourceType = "audioSource2";
+//https://simpl.info/getusermedia/sources/
+  function gotSource(sourceInfo) {
+      var option1 = document.createElement('option');
+      var option2 = document.createElement('option');
+      option1.value = sourceInfo.deviceId;
+      option2.value = sourceInfo.deviceId;
+      if (sourceInfo.kind === 'audioinput') {
+        option1.text = sourceInfo.label || 'microphone ' + (audioSelect1.length);
+        option2.text = sourceInfo.label || 'microphone ' + (audioSelect1.length);
+      audioSelect1.appendChild(option1);
+      audioSelect2.appendChild(option2);
+      } else {
+        console.log('Some other kind of source: ', sourceInfo);
+      }
+  }
+  // end of     function gotSources(sourceInfos)
+  navigator.mediaDevices.enumerateDevices()
+  .then(function(devices) {
+    devices.forEach(gotSource);
+  })
+  .catch(function(err) {
+    console.log(err.name + ": " + err.message);
+  });
+
+
+  //  pitch_convolver.buffer = context.createBuffer(2, 2048, context.sampleRate);
+
+  var buffers = {};
+
+
+  analyzerFreqArray1 =  new Uint8Array(analyser1.frequencyBinCount);
+  analyzerAmpArray1 =  new Uint8Array(analyser1.frequencyBinCount);
+  analyzerFreqArray2 =  new Uint8Array(analyser2.frequencyBinCount);
+  analyzerAmpArray2 =  new Uint8Array(analyser2.frequencyBinCount);
+
+
+
+  getAverageVolume = function (array) {
+      var values = 0;
+      var average;
+      var weightedAverageIndex = 0;
+      var length = array.length;
+
+      // get all the frequency amplitudes
+      for (var i = 0; i < length; i++) {
+          values += array[i];
+          weightedAverageIndex += array[i] * i;
+      }
+      if ( values > 0 )weightedAverageIndex /= values;
+      average = values / length;
+      return [average, weightedAverageIndex];
+  }
+
+  animate(Date.now());
+
+  $("#micselect").show();
+  $("#audoiContexReady").hide();
+
+
+
+}
 
 var port ="";
-
-while(isNaN(parseInt(port)) || parseInt(port) < 1024 || parseInt(port)>65535){
-  port =  prompt("Please enter port number [1024,65535] that the livewriting will listen to", "3333");
-}
 
 
 socket.on('connect', function() {
@@ -37,12 +286,15 @@ socket.on('connect', function() {
          }
      );
  });
-var context = WX._ctx;
+
+
 function getRandomInt (min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
 window.onload = function() {
+
+
     var DEBUG = true;
     var enableSound = true;
     var enableCodeMirror = true;
@@ -51,9 +303,6 @@ window.onload = function() {
        keydown_debug_color_index=0,
        keypress_debug_color_index=0;
 
-    if (!hasGetUserMedia()) {
-        alert('getUserMedia() is not supported in your browser. Please visit http://caniuse.com/#feat=stream to see web browsers available for this demo.');
-    }
 
     var options = {
       lineNumbers: false,
@@ -66,6 +315,12 @@ window.onload = function() {
     if(enableCodeMirror){
       var editor = CodeMirror.fromTextArea(document.getElementById("livetext"),options);
       editor.setSize("96%", "98%");
+    }
+
+    $("#micselect").hide();
+
+    while(isNaN(parseInt(port)) || parseInt(port) < 1024 || parseInt(port)>65535){
+      port =  prompt("Please enter port number [1024,65535] that the livewriting will listen to", "3333");
     }
 
     $("#hide").click(function(){
@@ -81,113 +336,11 @@ window.onload = function() {
         DEBUG = false;
     })
 
+    $("#audoiContexReadyButton").click(audioContextReady);
+
     // set up forked web audio context, for multiple browsers
     // window. is needed otherwise Safari explodes
 
-    var volume = 0;
-    var freqIndex;
-
-    navigator.getUserMedia = (navigator.getUserMedia ||
-                              navigator.webkitGetUserMedia ||
-                              navigator.mozGetUserMedia ||
-                              navigator.msGetUserMedia);
-
-    var audioSource1;
-    var audioSource2;
-    var analyser1 = context.createAnalyser();
-    var analyser2 = context.createAnalyser();
-
-    analyser1.smoothingTimeConstant = 0.3;
-    analyser1.fftSize = 512;
-
-    analyser2.smoothingTimeConstant = 0.3;
-    analyser2.fftSize = 512;
-
-
-    var audioSelect1 = document.querySelector('select#audioSource1');
-    var audioSelect2 = document.querySelector('select#audioSource2');
-
-    function getSourceID(){
-      var MicId = this.item(this.selectedIndex).value;
-      var sourceType = this.sourceType;
-        if (navigator.getUserMedia) {
-            console.log('getUserMedia supported.');
-            var audioOpts = {
-              audio: {
-                optional: [
-                  //{sourceId: audio_source},  // do it like this to take the default audio src
-                  {googAutoGainControl: false},
-                  {googAutoGainControl2: false},
-                  {googEchoCancellation: false},
-                  {googEchoCancellation2: false},
-                  {googNoiseSuppression: false},
-                  {googNoiseSuppression2: false},
-                  {googHighpassFilter: false},
-                  {googTypingNoiseDetection: false},
-                  {googAudioMirroring: false},
-                  {sourceId: MicId}
-                ]
-             },
-             video: false
-            };
-             navigator.mediaDevices.getUserMedia (audioOpts).then(
-            // Success callback
-              function(stream) {
-                  if (sourceType == "audioSource1") {
-                      audioSource1 =  context.createMediaStreamSource(stream);
-                      audioSource1.connect(analyser1); // ON/OFF
-                  }
-                  else if (sourceType == "audioSource2"){ // first selected (e.g. mic from audio interface)
-                      audioSource2 = context.createMediaStreamSource(stream);
-                      audioSource2.connect(analyser2); // ON/OFF
-                  }
-              })
-              .catch(  function(err) {
-                  console.log('The following gUM error occured: ' + err);
-              }); // end of navigator.getUserMedia
-        } else {
-        console.log('getUserMedia not supported on your browser!');
-        }
-    }
-
-    audioSelect1.onchange = getSourceID;
-    audioSelect1.sourceType = "audioSource1";
-    audioSelect2.onchange = getSourceID;
-    audioSelect2.sourceType = "audioSource2";
-//https://simpl.info/getusermedia/sources/
-    function gotSource(sourceInfo) {
-        var option1 = document.createElement('option');
-        var option2 = document.createElement('option');
-        option1.value = sourceInfo.deviceId;
-        option2.value = sourceInfo.deviceId;
-        if (sourceInfo.kind === 'audioinput') {
-          option1.text = sourceInfo.label || 'microphone ' + (audioSelect1.length);
-          option2.text = sourceInfo.label || 'microphone ' + (audioSelect1.length);
-        audioSelect1.appendChild(option1);
-        audioSelect2.appendChild(option2);
-        } else {
-          console.log('Some other kind of source: ', sourceInfo);
-        }
-    }
-    // end of     function gotSources(sourceInfos)
-    navigator.mediaDevices.enumerateDevices()
-    .then(function(devices) {
-      devices.forEach(gotSource);
-    })
-    .catch(function(err) {
-      console.log(err.name + ": " + err.message);
-    });
-
-
-    //  pitch_convolver.buffer = context.createBuffer(2, 2048, context.sampleRate);
-
-    var buffers = {};
-
-
-    var analyzerFreqArray1 =  new Uint8Array(analyser1.frequencyBinCount);
-    var analyzerAmpArray1 =  new Uint8Array(analyser1.frequencyBinCount);
-    var analyzerFreqArray2 =  new Uint8Array(analyser2.frequencyBinCount);
-    var analyzerAmpArray2 =  new Uint8Array(analyser2.frequencyBinCount);
 
     // load the sound
     if(DEBUG==true){
@@ -197,22 +350,6 @@ window.onload = function() {
       $("#debug-panel").hide();
     }
 
-
-    function getAverageVolume(array) {
-        var values = 0;
-        var average;
-        var weightedAverageIndex = 0;
-        var length = array.length;
-
-        // get all the frequency amplitudes
-        for (var i = 0; i < length; i++) {
-            values += array[i];
-            weightedAverageIndex += array[i] * i;
-        }
-        if ( values > 0 )weightedAverageIndex /= values;
-        average = values / length;
-        return [average, weightedAverageIndex];
-    }
 
 /*****************************************************************************
 /*****************************************************************************
@@ -286,6 +423,7 @@ window.onload = function() {
       geo[currentPage][geoindex].vertices[strIndex*4+2].z = +50;
       geo[currentPage][geoindex].vertices[strIndex*4+3].z = +50;
     }
+    //end of removeLetterCodeMirror
 
     var shiftLetterVerticallyCodeMirror = function(line,ch,shiftAmount){
       var object = cmGrid[currentPage][line][ch];
@@ -300,7 +438,7 @@ window.onload = function() {
       geo[currentPage][geoindex].vertices[strIndex*4+2].y = localY+localOffset;
       geo[currentPage][geoindex].vertices[strIndex*4+3].y = localY+localOffset;
     }
-
+    // end of shiftLetterVerticallyCodeMirror
 
 
     var shiftLetterHorizontallyCodeMirror = function(line,ch, shiftAmount){
@@ -319,6 +457,7 @@ window.onload = function() {
       geo[currentPage][geoindex].vertices[strIndex*4+2].x = (ch+shiftAmount) * scaleX+localOffset;
       geo[currentPage][geoindex].vertices[strIndex*4+3].x = (ch+shiftAmount) * scaleX;
     }
+    // end shiftLetterHorizontallyCodeMirror
 
     var addLetterCodeMirror = function (line, ch, sizeFactor, char){
       if (rightMostPosition<ch){
@@ -395,6 +534,7 @@ window.onload = function() {
 
 
     }
+    // end of addLetterCodeMirror
 
     var renderer = new THREE.WebGLRenderer({antialias: true});
     renderer.setClearColor( 0xffffff );
@@ -519,7 +659,7 @@ window.onload = function() {
     var tdscale = 5.0; // timedomain distortion scale
 
     var currengPage1StartTime = 0;
-    var animate = function(t) {
+    animate = function(t) {
 
         var alpha = 0.5;
         // get the average, bincount is fftsize / 2
@@ -552,14 +692,12 @@ window.onload = function() {
     };// the end of animate()
 
 
-    animate(Date.now());
     //  document.body.appendChild(c);
     var down = false;
     var sx = 0, sy = 0;
     var toggle = true;
     var interval = 1, alpha = 0.9, lastKeyTime = 0;
     var index = 30;
-    var previousKeyPressTime = context.currentTime;
     var first = true;
 
 

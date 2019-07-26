@@ -230,7 +230,6 @@
 
       <script src="Three.js"></script>
       <script src="nfme.js"></script>
-      <script src="./waax.min.js"></script>
       <script src="./lib/codemirror/codemirror.js"></script>
 
       <style>
@@ -245,8 +244,10 @@
       </style>
     </head>
   <body>
-
-  <div id= "micselect" class="select">
+  <div id = "audoiContexReady">
+    <button id="audoiContexReadyButton">Start Web Audio</button>
+  </div>
+  <div id= "micselect" class="select" style="visibility:none;">
     <label for="audioSource1">Audio1: </label>
     <select id="audioSource1"><option>select your mic</select>
     <label for="audioSource2">Audio2: </label>
