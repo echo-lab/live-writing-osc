@@ -14,6 +14,7 @@ var audioSource1;
 var audioSource2;
 var analyser1;
 var analyser2;
+var gSizeFactor = 0;
 
 function audioContextReady(){
   // Start off by initializing a new context.
@@ -465,23 +466,6 @@ window.onload = function() {
           rightMostPosition = ch;
       }
 
-      if ( snapToggle ){
-          rightMostXCoord = ch*scaleX+offset;// this creates an really interesting animations
-          if ( line %3 == 0 && ch == 0){
-            var keycode = char.charCodeAt(0);
-            var source = context.createBufferSource();
-            var gain = context.createGain();
-            gain.gain.value = 0.1;
-            source.buffer = buffers['woodangtang'];
-            //source.playbackRate.value = 1 + Math.random()*2;
-            var freqNum = keycode;
-
-            source.playbackRate.value = 0.1 + (freqNum-65) / 60;
-            source.connect(level_original);
-            source.start(0);
-          }
-      }
-
       var strIndex = pageStrIndex[currentPage];
       pageStrIndex[currentPage]++;
       cmGrid[currentPage][line][ch] = {index:strIndex, sizeFactor:sizeFactor, char: char};
@@ -880,7 +864,20 @@ window.onload = function() {
         }else{
           uniforms.alpha.value = obj[1]/255.0;
         }
-      }else if (obj[0] == "/add"){
+      }else if (obj[0] == "/fontscale"){
+        if(obj.length!=2){
+          alert("/fontscale expect one or three parameters.");
+          return;
+        }
+        var content = obj[1];
+        if(isNaN(content)){
+          alert("The 2nd parameter of /fontscale should be numeric.");
+          return;
+        }
+        gSizeFactor = parseFloat(content)/50;
+
+      }
+      else if (obj[0] == "/add"){
         var doc = editor.getDoc();
         var content = obj[1];
         var replace = false;
@@ -895,7 +892,7 @@ window.onload = function() {
           if(obj.length==5){
               replace = (obj[4] == 'true');
           }
-        }else if (obj.length==2){
+        }else if (obj.length==2){ // location is not specified so get the current cursor position.
           var line = doc.getCursor().line,
           ch = doc.getCursor().ch; // gets the line number in the cursor position
         }else{
@@ -903,7 +900,7 @@ window.onload = function() {
         }
         oscAdded = true;
 
-        if (content == 32){
+        if (content == 32){ //
           doc.replaceRange(" ", { // create a new object to avoid mutation of the original selection
               line: line,
               ch: ch // set the character position to the end of the line
@@ -1055,13 +1052,10 @@ window.onload = function() {
       var startCh = change.from.ch;
       var endLine = change.to.line;
       var endCh = change.to.ch;
-      var sizeFactor = 0;
+
       var added = change.text.join('\n').length>0
       var removed = change.removed.join('\n').length>0
 
-      if (editor.getDoc().lineCount() <=8 && currentPage == 0)
-        volume = 0;
-      sizeFactor = volume;
 
 
       // create a new geometry
@@ -1192,13 +1186,13 @@ window.onload = function() {
 
         // add first line;
         for (var j=0; j< change.text[0].length; j++){
-          addLetterCodeMirror(startLine, j+startCh, sizeFactor, change.text[0][j]);
+          addLetterCodeMirror(startLine, j+startCh, gSizeFactor, change.text[0][j]);
         }
 
         // middle lines to the last lines
         for (var i=1; i<change.text.length; i++){
           for (var j=0; j<change.text[i].length; j++){
-            addLetterCodeMirror(startLine+i, j, sizeFactor, change.text[i][j]);
+            addLetterCodeMirror(startLine+i, j, gSizeFactor, change.text[i][j]);
           }
         }
 
