@@ -15,6 +15,7 @@ var audioSource2;
 var analyser1;
 var analyser2;
 var gSizeFactor = 0;
+var gLayer = 0;
 
 function audioContextReady(){
   // Start off by initializing a new context.
@@ -460,7 +461,8 @@ window.onload = function() {
     }
     // end shiftLetterHorizontallyCodeMirror
 
-    var addLetterCodeMirror = function (line, ch, sizeFactor, char){
+    var addLetterCodeMirror = function (line, ch, sizeFactor, char, zLayer){
+      zLayer = zLayer ? zLayer : 0;
       if (rightMostPosition<ch){
           rightMostXCoord = ch*scaleX+offset;
           rightMostPosition = ch;
@@ -486,10 +488,10 @@ window.onload = function() {
       var localOffset = offset * (1+sizeFactor*2.0);
       var localY = (2-line)*scaleY - (sizeFactor/4.0);
       geo[currentPage][geoindex].vertices.push(
-          new THREE.Vector3( ch*scaleX, localY, 0 ), // left bottom
-          new THREE.Vector3( ch*scaleX+localOffset, localY, 0 ), //right bottom
-          new THREE.Vector3( ch*scaleX+localOffset, localY+localOffset, 0 ),// right top
-          new THREE.Vector3( ch*scaleX, localY+localOffset, 0 )// left top
+          new THREE.Vector3( ch*scaleX, localY, zLayer ), // left bottom
+          new THREE.Vector3( ch*scaleX+localOffset, localY, zLayer ), //right bottom
+          new THREE.Vector3( ch*scaleX+localOffset, localY+localOffset, zLayer ),// right top
+          new THREE.Vector3( ch*scaleX, localY+localOffset, zLayer )// left top
       );
 
       for (var k=0; k<4;k++){
@@ -811,180 +813,201 @@ window.onload = function() {
       if(osc_received)
         osc_received.innerHTML = obj;
       console.log("received osc messages", obj);
-      if(obj[0] == "/zoom"){
-        zoomabs(obj[1]/255.0+1);
-      }else if (obj[0] == "/camrotate"){
-        camera.rotation.x = obj[1]/180 *3.14159;
-        camera.rotation.y = obj[2]/180 *3.14159;
-        camera.rotation.z = obj[3]/180 *3.14159;
-      }
-      else if(obj[0] == "/camtranslate"){
-        camera.position.x = obj[1]/10;
-        camera.position.y = obj[2]/10;
-        camera.position.z = obj[3]/10;
-      }else if (obj[0] == "/rotation"){
-        if (!Number.isInteger(obj[1])){
-          alert("received osc message contains non-numbers : ", obj);
-          return;
-        }
-        uniforms.rotation.value = parseFloat(obj[1])/100.0;
-      }
-      else if (obj[0] == "/distort"){
-        if (!Number.isInteger(obj[1])){
-          alert("received osc message contains non-numbers : ", obj);
-          return;
-        }
-        uniforms.distort.value = parseFloat(obj[1])/10000.0;
-      }
-      else if(obj[0] == "/panic"){
-        panicCamera();
-      }
-      else if(obj[0] == "/clear"){
-        editor.getDoc().setSelection({line:0, ch:0}, {line:editor.getDoc().size+1, ch:0});
-        editor.getDoc().replaceSelection("");
-      }else if(obj[0] == "/color"){
-        console.log(obj[1]| 0x000000);
-        if(obj.length==4){
-          renderer.setClearColor('rgb('+parseInt(obj[1])+","+parseInt(obj[2])+","+parseInt(obj[3])+")");
-        }else if (obj.length == 2){
-          var grayColor = parseInt(obj[1]);
-            renderer.setClearColor('rgb('+grayColor+","+grayColor+","+grayColor+")");
-        }else{
-          alert("We need 3 parameters for /color");
-        }
-      }else if(obj[0] == "/fontcolor"){
-        if(obj.length!=2){
-          alert("We need 1 parameters for /color")
-        }else{
-          uniforms.fontcolor.value = obj[1]/255.0;
-        }
-      }else if(obj[0] == "/alpha"){
-        if(obj.length!=2){
-          alert("We need 1 parameters for /alpha")
-        }else{
-          uniforms.alpha.value = obj[1]/255.0;
-        }
-      }else if (obj[0] == "/fontscale"){
-        if(obj.length!=2){
-          alert("/fontscale expect one or three parameters.");
-          return;
-        }
-        var content = obj[1];
-        if(isNaN(content)){
-          alert("The 2nd parameter of /fontscale should be numeric.");
-          return;
-        }
-        gSizeFactor = parseFloat(content)/50;
+      var command = obj[0];
+      switch(command) {
+        case "/zoom":
+          zoomabs(obj[1]/255.0+1);
+          break;
 
-      }
-      else if (obj[0] == "/add"){
-        var doc = editor.getDoc();
-        var content = obj[1];
-        var replace = false;
-        if(obj.length>=4){ // location is specified
-          var  line = parseInt(obj[1]),
-          ch = parseInt(obj[2]);
-          content = obj[3];
-          if (!Number.isInteger(line) || !Number.isInteger(ch)){
+        case "/camrotate":
+          camera.rotation.x = obj[1]/180 *3.14159;
+          camera.rotation.y = obj[2]/180 *3.14159;
+          camera.rotation.z = obj[3]/180 *3.14159;
+          break;
+        case "/camtranslate":
+          camera.position.x = obj[1]/10;
+          camera.position.y = obj[2]/10;
+          camera.position.z = obj[3]/10;
+          break;
+        case "/rotation":
+          if (!Number.isInteger(obj[1])){
             alert("received osc message contains non-numbers : ", obj);
             return;
           }
-          if(obj.length==5){
-              replace = (obj[4] == 'true');
+          uniforms.rotation.value = parseFloat(obj[1])/100.0;
+          break;
+        case "/distort":
+          if (!Number.isInteger(obj[1])){
+            alert("received osc message contains non-numbers : ", obj);
+            return;
           }
-        }else if (obj.length==2){ // location is not specified so get the current cursor position.
-          var line = doc.getCursor().line,
-          ch = doc.getCursor().ch; // gets the line number in the cursor position
-        }else{
-          alert("/add expect one or three parameters.");
-        }
-        oscAdded = true;
+          uniforms.distort.value = parseFloat(obj[1])/10000.0;
+          break;
+        case "/panic":
+          panicCamera();
+          break;
+        case "/clear":
+          editor.getDoc().setSelection({line:0, ch:0}, {line:editor.getDoc().size+1, ch:0});
+          editor.getDoc().replaceSelection("");
+          break;
+        case "/color":
+          console.log(obj[1]| 0x000000);
+          if(obj.length==4){
+            renderer.setClearColor('rgb('+parseInt(obj[1])+","+parseInt(obj[2])+","+parseInt(obj[3])+")");
+          }else if (obj.length == 2){
+            var grayColor = parseInt(obj[1]);
+              renderer.setClearColor('rgb('+grayColor+","+grayColor+","+grayColor+")");
+          }else{
+            alert("We need 3 parameters for /color");
+          }
+          break;
+        case "/fontcolor":
+          if(obj.length!=2){
+            alert("We need 1 parameters for /color")
+          }else{
+            uniforms.fontcolor.value = obj[1]/255.0;
+          }
+          break;
+        case "/alpha":
+          if(obj.length!=2){
+            alert("We need 1 parameters for /alpha")
+          }else{
+            uniforms.alpha.value = obj[1]/255.0;
+          }
+          break;
+        case "/fontscale":
+          if(obj.length!=2){
+            alert("/fontscale expect one or three parameters.");
+            return;
+          }
+          var content = obj[1];
+          if(isNaN(content)){
+            alert("The 2nd parameter of /fontscale should be numeric.");
+            return;
+          }
+          gSizeFactor = parseFloat(content)/50;
+          break;
+        case "/add":
+          var doc = editor.getDoc();
+          var content = obj[1];
+          var replace = false;
+          if(obj.length>=4){ // location is specified
+            var  line = parseInt(obj[1]),
+            ch = parseInt(obj[2]);
+            content = obj[3];
+            if (!Number.isInteger(line) || !Number.isInteger(ch)){
+              alert("received osc message contains non-numbers : ", obj);
+              return;
+            }
+            if(obj.length==5){
+                replace = (obj[4] == 'true');
+            }
+          }else if (obj.length==2){ // location is not specified so get the current cursor position.
+            var line = doc.getCursor().line,
+            ch = doc.getCursor().ch; // gets the line number in the cursor position
+          }else{
+            alert("/add expect one or three parameters.");
+          }
+          oscAdded = true;
 
-        if (content == 32){ //
-          doc.replaceRange(" ", { // create a new object to avoid mutation of the original selection
-              line: line,
-              ch: ch // set the character position to the end of the line
-          });
-        }else if (content == 13){
-          doc.replaceRange("\n", { // create a new object to avoid mutation of the original selection
-              line: line,
-              ch: ch // set the character position to the end of the line
-          });
-        }else if (content == 9){
-          doc.replaceRange("\t", { // create a new object to avoid mutation of the original selection
-              line: line,
-              ch: ch // set the character position to the end of the line
-          });
-        }else{
-
-          // pad line
-          while(doc.size <= line){
-            // padding lines
+          if (content == 32){ //
+            doc.replaceRange(" ", { // create a new object to avoid mutation of the original selection
+                line: line,
+                ch: ch // set the character position to the end of the line
+            });
+          }else if (content == 13){
             doc.replaceRange("\n", { // create a new object to avoid mutation of the original selection
                 line: line,
                 ch: ch // set the character position to the end of the line
             });
-          }
-          // pad space
-          if(doc.getLine(line).length < ch){
-            doc.replaceRange("".padStart(ch-doc.getLine(line).length," "),{
-              line:line,
-              ch:ch
-            })
-          }
-          var toline = line;
-          var toch = ch;
-          if(replace){
-            var arr = str.split("\r\n|\r|\n");
-            toline = line + arr.length-1;
-            toch = ch + content.length;
-            if(toline > line){
-              toch = arr[arr.length-1].length
+          }else if (content == 9){
+            doc.replaceRange("\t", { // create a new object to avoid mutation of the original selection
+                line: line,
+                ch: ch // set the character position to the end of the line
+            });
+          }else{
+
+            // pad line
+            while(doc.size <= line){
+              // padding lines
+              doc.replaceRange("\n", { // create a new object to avoid mutation of the original selection
+                  line: line,
+                  ch: ch // set the character position to the end of the line
+              });
             }
+            // pad space
+            if(doc.getLine(line).length < ch){
+              doc.replaceRange("".padStart(ch-doc.getLine(line).length," "),{
+                line:line,
+                ch:ch
+              })
+            }
+            var toline = line;
+            var toch = ch;
+            if(replace){
+              var arr = str.split("\r\n|\r|\n");
+              toline = line + arr.length-1;
+              toch = ch + content.length;
+              if(toline > line){
+                toch = arr[arr.length-1].length
+              }
+            }
+
+            if(content.search(/\\/)>=0){
+              content = content.replace('\\\'a','\xE1' );
+              content = content.replace('\\\'e','\xE9' );
+              content = content.replace('\\\'i','\xED' );
+              content = content.replace('\\\'o','\xF3' );
+              content = content.replace('\\\'u','\xFA' );
+              content = content.replace('\\\'n','\xF1' );
+
+              content = content.replace('\\\'A','\xC1' );
+              content = content.replace('\\\'E','\xC9' );
+              content = content.replace('\\\'I','\xCD' );
+              content = content.replace('\\\'O','\xD3' );
+              content = content.replace('\\\'U','\xDA' );
+              content = content.replace('\\\'N','\xD1' );
+              content = content.replace('\\n','\n')
+            }
+            doc.replaceRange(content, { // create a new object to avoid mutation of the original selection
+                line: line,
+                ch: ch // set the character position to the end of the line
+            },{ // create a new object to avoid mutation of the original selection
+                line: toline,
+                ch: toch // set the character position to the end of the line
+            });
           }
-
-          if(content.search(/\\/)>=0){
-            content = content.replace('\\\'a','\xE1' );
-            content = content.replace('\\\'e','\xE9' );
-            content = content.replace('\\\'i','\xED' );
-            content = content.replace('\\\'o','\xF3' );
-            content = content.replace('\\\'u','\xFA' );
-            content = content.replace('\\\'n','\xF1' );
-
-            content = content.replace('\\\'A','\xC1' );
-            content = content.replace('\\\'E','\xC9' );
-            content = content.replace('\\\'I','\xCD' );
-            content = content.replace('\\\'O','\xD3' );
-            content = content.replace('\\\'U','\xDA' );
-            content = content.replace('\\\'N','\xD1' );
-            content = content.replace('\\n','\n')
+          break;
+        case "/remove":
+          if(obj.length!=5){
+            alert("removed requires 4 more parameters", obj);
+            return;
           }
-          doc.replaceRange(content, { // create a new object to avoid mutation of the original selection
-              line: line,
-              ch: ch // set the character position to the end of the line
-          },{ // create a new object to avoid mutation of the original selection
-              line: toline,
-              ch: toch // set the character position to the end of the line
-          });
-        }
-      }
-      else if (obj[0] == "/remove"){
-        if(obj.length!=5){
-          alert("removed requires 4 more parameters", obj);
-          return;
-        }
-        var startLine = parseInt(obj[1]),
-        startCh = parseInt(obj[2]),
-        endLine = parseInt(obj[3]),
-        endCh = parseInt(obj[4]);
-        oscRemoved = true;
-        editor.getDoc().setSelection({line:startLine, ch:startCh}, {line:endLine, ch:endCh});
-        editor.getDoc().replaceSelection("");
-      }
-      else{
-        alert("unknown osc message: Cannot parse it ", obj);
-      }
+          var startLine = parseInt(obj[1]),
+          startCh = parseInt(obj[2]),
+          endLine = parseInt(obj[3]),
+          endCh = parseInt(obj[4]);
+          oscRemoved = true;
+          editor.getDoc().setSelection({line:startLine, ch:startCh}, {line:endLine, ch:endCh});
+          editor.getDoc().replaceSelection("");
+          break;
+        case "/z":
+          if(obj.length!=2){
+            alert("/layer expect one parameter");
+            return;
+          }
+          var content = obj[1];
+          if(isNaN(content)){
+            alert("The 2nd parameter of /fontscale should be numeric.");
+            return;
+          }
+          gLayer = parseFloat(content)/10;
+          break;
 
+        default:
+          alert("unknown osc message: Cannot parse it ", obj);
+
+      }
       return;
     });
 
@@ -1186,13 +1209,13 @@ window.onload = function() {
 
         // add first line;
         for (var j=0; j< change.text[0].length; j++){
-          addLetterCodeMirror(startLine, j+startCh, gSizeFactor, change.text[0][j]);
+          addLetterCodeMirror(startLine, j+startCh, gSizeFactor, change.text[0][j], gLayer);
         }
 
         // middle lines to the last lines
         for (var i=1; i<change.text.length; i++){
           for (var j=0; j<change.text[i].length; j++){
-            addLetterCodeMirror(startLine+i, j, gSizeFactor, change.text[i][j]);
+            addLetterCodeMirror(startLine+i, j, gSizeFactor, change.text[i][j], gLayer);
           }
         }
 
