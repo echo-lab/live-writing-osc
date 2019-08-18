@@ -15,6 +15,7 @@ var audioSource2;
 var analyser1;
 var analyser2;
 var gSizeFactor = 0;
+var gFadeInDelay = 0.0;
 var gLayer = 0;
 
 function audioContextReady(){
@@ -407,7 +408,8 @@ window.onload = function() {
       strIndex: {type: 'f', value: [] },
       lineIndex: {type: 'f', value: [] },
       chIndex: {type: 'f', value: [] },
-      alphabetIndex:{type:'f', value: []}
+      alphabetIndex:{type:'f', value: []},
+      appearTime:{type:'f',value:[]}
     };
 
 // keycode table is available here
@@ -493,13 +495,14 @@ window.onload = function() {
           new THREE.Vector3( ch*scaleX+localOffset, localY+localOffset, zLayer ),// right top
           new THREE.Vector3( ch*scaleX, localY+localOffset, zLayer )// left top
       );
-
+      var appearTime = uniforms.time.value + gFadeInDelay;
       for (var k=0; k<4;k++){
         attributes.pageIndex.value[strIndex*4+k] = currentPage;
         attributes.strIndex.value[strIndex*4+k] = strIndex;// THREE.Vector2(6.0,12.0);
         attributes.lineIndex.value[strIndex*4+k] = line;// THREE.Vector2(6.0,12.0);
         attributes.chIndex.value[strIndex*4+k] = ch;// THREE.Vector2(6.0,12.0);
         attributes.alphabetIndex.value[strIndex*4+k] = alphabetIndex;// THREE.Vector2(6.0,12.0);
+        attributes.appearTime.value[strIndex*4+k] = appearTime;// THREE.Vector2(6.0,12.0);
       }
       var face = new THREE.Face3(strIndex*4+0, strIndex*4+1, strIndex*4+2);
       geo[currentPage][geoindex].faces.push(face);
@@ -596,8 +599,9 @@ window.onload = function() {
         rightMostXCoord : { type: "f", value: 0.0 },
         distort : {type:"f", value:0.0},
         fontcolor : {type:"f", value:0.0},
-        alpha : {type:"f", value:0.0}
-
+        gAlpha : {type:"f", value:1.0},
+        mixval : {type:"f", value:1.0},
+        fadeInDelay : {type:"f", value:gFadeInDelay}
       //  xCoord : { type: "f", value: 0.0 }
     };
 
@@ -645,10 +649,9 @@ window.onload = function() {
     var snapToggle = false;
     var tdscale = 5.0; // timedomain distortion scale
 
-    var currengPage1StartTime = 0;
     animate = function(t) {
 
-        var alpha = 0.5;
+        var alphaConstant = 0.5;
         // get the average, bincount is fftsize / 2
         analyser1.getByteFrequencyData(analyzerFreqArray1);
         analyser1.getByteTimeDomainData(analyzerAmpArray1);
@@ -656,17 +659,16 @@ window.onload = function() {
         analyser2.getByteTimeDomainData(analyzerAmpArray1);
 
         var resultArr = getAverageVolume(analyzerFreqArray1);
-        volume = alpha * (resultArr[0]/128.0) + (1-alpha) * volume;
+        volume = alphaConstant * (resultArr[0]/128.0) + (1-alphaConstant) * volume;
         uniforms.volume.value = volume/1.5;
         uniforms.time.value += 0.05;
-
         freqIndex = resultArr[1];
 
-        alpha = 0.85;
+        alphaConstant = 0.85;
         uniforms.rightMostXCoord.value = rightMostXCoord;
 
         for (var l=0;l<128;l++){
-            uniforms.timeDomain.value[l] = uniforms.timeDomain.value[l] * alpha + (1-alpha ) * (analyzerAmpArray1[l]/256.0-0.5) * tdscale;
+            uniforms.timeDomain.value[l] = uniforms.timeDomain.value[l] * alphaConstant + (1-alphaConstant ) * (analyzerAmpArray1[l]/256.0-0.5) * tdscale;
         }
         try {
           renderer.render(scene, camera);
@@ -733,7 +735,7 @@ window.onload = function() {
           editor.execCommand("goDocEnd")
           if (currentPage == 1){ // the 2nd page
             // the 2nd page shader
-              var shaderMaterial = new THREE.ShaderMaterial({
+        /*      var shaderMaterial = new THREE.ShaderMaterial({
                   uniforms : uniforms,
                   attributes : attributes,
                   vertexShader : document.querySelector('#vertex2').textContent,
@@ -744,6 +746,7 @@ window.onload = function() {
               uniforms.time.value = 0;
               //for (var i=0; i< numPage-1; i++)
               books[1].material = shaderMaterial;
+          */
           }
         }
 
@@ -872,7 +875,22 @@ window.onload = function() {
           if(obj.length!=2){
             alert("We need 1 parameters for /alpha")
           }else{
-            uniforms.alpha.value = obj[1]/255.0;
+            uniforms.gAlpha.value = parseFloat(obj[1])/255.0;
+          }
+          break;
+        case "/fadeindelay":
+          if(obj.length!=2){
+            alert("We need 1 parameters for /alpha")
+          }else{
+            gFadeInDelay = parseFloat(obj[1]);
+            uniforms.fadeInDelay.value =gFadeInDelay;
+          }
+          break;
+        case "/mix":
+          if(obj.length!=2){
+            alert("We need 1 parameters for /mix")
+          }else{
+            uniforms.mixval.value = obj[1]/100.0;
           }
           break;
         case "/fontscale":

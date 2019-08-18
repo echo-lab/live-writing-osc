@@ -6,6 +6,7 @@
     <link rel="stylesheet" type="text/css" href="./main.css"/>
       <link rel="stylesheet" type="text/css" href="../css/jquery-ui.min.css"/>
       <link rel="stylesheet" type="text/css" href="./lib/codemirror/codemirror.css"/>
+  <!--
       <script id="vertex0" type="text/x-glsl-vert">
         varying vec2 vUv;
 
@@ -24,13 +25,13 @@
         uniform float fontcolor;
         uniform float alpha;
         void main() {
-          vec4 diffuse = texture2D(map, vUv);
+          vec4 letter = texture2D(map, vUv);
           vec4 diffuse_color = diffuse;
           diffuse_color.r = fontcolor;
           diffuse_color.g = fontcolor;
           diffuse_color.b = fontcolor;
           diffuse_color.a = alpha;
-          vec4 mix_diffuse = mix(diffuse, diffuse_color,1.0);
+          vec4 mix_diffuse = mix(letter, diffuse_color, 1.0);
 
           gl_FragColor = mix_diffuse;//vec4(mix_diffuse.rgb, opacity);*/
        //gl_FragColor = mix(diffuse, vec4(1.0,0,0,1), color);
@@ -83,7 +84,7 @@
           gl_FragColor = mix_diffuse;//*/
       }
       </script>
-
+-->
       <script id="vertex2" type="text/x-glsl-vert">
         varying vec2 vUv;
       //  varying float xCoord;
@@ -91,11 +92,15 @@
         uniform float time;
         uniform float timeDomain[128];
         uniform float volume;
+        uniform float fadeInDelay;
         uniform float rotation;
         uniform int coloredStr[27];
         attribute float alphabetIndex;
       //  varying float index;
         attribute float strIndex;
+        attribute float appearTime;
+        varying float vAlpha;
+
         uniform float interval;
 
         void main() {
@@ -105,6 +110,7 @@
           *///vec4 fpos = vec4( mix(position,rpos,interval), 1.0 );
           vec4 fpos = vec4(position,1.0);
           //  fpos.x += -35.0;
+          vAlpha = min((time - appearTime+fadeInDelay)/fadeInDelay,1.0);
           float xCoord = position.x/rightMostXCoord;
           fpos.y = fpos.y + timeDomain[int(xCoord*128.0)];
           float speed = 1.0-exp(-time*0.003);
@@ -127,36 +133,21 @@
         uniform float distort;
         uniform float time;
         uniform float fontcolor;
-        uniform float alpha;
-
+        uniform float gAlpha;
+        uniform float mixval;
+        varying float vAlpha;
        // int index2 = 20;
         void main() {
           vec2 uv = vUv;
-
           uv.y = uv.y + sin(uv.x  * 1000.0 * time)* distort ;//+ sin(uv.x * 2000.0)*0.001 * volume2;
           uv.x = uv.x + cos(uv.y  * 900.0 * time)* distort ;
-          vec4 diffuse = texture2D(map, uv);
-         /*  vec4 diffuse_white = diffuse;
-          //vec4 diffuse_green = diffuse;
-          //vec4 diffuse_blue = diffuse;
-          diffuse_white.r = 1.0;
-          diffuse_white.g = 1.0;
-          diffuse_white.b = 1.0;
-
-          vec4 mix_diffuse = mix(diffuse, diffuse_white,0.5-interval/2.0);
-
-          gl_FragColor = mix_diffuse;//vec4(mix_diffuse.rgb, opacity);*/
-          vec4 diffuse_color = diffuse;
-          diffuse_color.r = fontcolor;
-          diffuse_color.g = fontcolor;
-          diffuse_color.b = fontcolor;
-        //  diffuse_color.a = alpha;
-
-          vec4 mix_diffuse = mix(diffuse, diffuse_color,1.0);
-
-          gl_FragColor = mix_diffuse;
-      //vec4(mix_diffuse.rgb, opacity);*/
-          //gl_FragColor = diffuse;
+          vec4 letter = texture2D(map, uv);
+          letter.r = fontcolor;
+          letter.g = fontcolor;
+          letter.b = fontcolor;
+          letter.a = min(letter.a,gAlpha);
+          letter.a = min(letter.a,vAlpha);
+          gl_FragColor = letter;
         }
       </script>
       <script id="vertex3" type="text/x-glsl-vert">

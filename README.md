@@ -34,6 +34,9 @@
     - `/color [red] [green] [blue]` : the background color RGB value [0,255]
     - `/color [greyscale]` : the background color in grayscale [0,255]
     - `/fontcolor [greyscale]`:  the font color in grayscale [0,255]
-    - `/fontscale [fontsize]`:  the font size - numeric value 0 is default size. 
+    - `/fontscale [fontsize]`:  the font size - numeric value 0 is default size.
+    - `/alpha [alphavalue]`:  set alpha value of all text [0,255] 0 being transparent.
+    - `/fadeindelay [delay]`:  delay value for text addition. if positive value, the text will fade in slowly. [0,-] 
+    - `/fontscale [fontsize]`:  the font size - numeric value 0 is default size.
     - `/remove [start line] [start ch] [end line] [end ch]`
 - reference
