@@ -142,11 +142,16 @@
           uv.y = uv.y + sin(uv.x  * 1000.0 * time)* distort ;//+ sin(uv.x * 2000.0)*0.001 * volume2;
           uv.x = uv.x + cos(uv.y  * 900.0 * time)* distort ;
           vec4 letter = texture2D(map, uv);
+          vec4 alphaLetter = texture2D(map, uv);
           letter.r = fontcolor;
           letter.g = fontcolor;
           letter.b = fontcolor;
-          letter.a = min(letter.a,gAlpha);
-          letter.a = min(letter.a,vAlpha);
+          alphaLetter.r = fontcolor;
+          alphaLetter.g = fontcolor;
+          alphaLetter.b = fontcolor;
+          alphaLetter.a = 0.0;
+          letter = mix(alphaLetter,letter,gAlpha);
+          letter = mix(alphaLetter,letter,vAlpha);
           gl_FragColor = letter;
         }
       </script>
