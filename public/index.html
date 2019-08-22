@@ -99,6 +99,10 @@
       //  varying float index;
         attribute float strIndex;
         attribute float appearTime;
+        attribute float disintegrateTime;
+        attribute float disintegrateXSpeed;
+        attribute float disintegrateYSpeed;
+        attribute float letterAlpha;
         varying float vAlpha;
 
         uniform float interval;
@@ -111,12 +115,15 @@
           vec4 fpos = vec4(position,1.0);
           //  fpos.x += -35.0;
           vAlpha = min((time - appearTime+fadeInDelay)/fadeInDelay,1.0);
+          vAlpha = min(vAlpha,letterAlpha);
           float xCoord = position.x/rightMostXCoord;
           fpos.y = fpos.y + timeDomain[int(xCoord*128.0)];
           float speed = 1.0-exp(-time*0.003);
-          fpos.x += ((sin(strIndex+time*2.0)))*(rotation) * 1.0;
-          fpos.z += ((sin(strIndex+time*2.0)))*(rotation) * 1.0;
-          fpos.y += ((cos(strIndex+time*2.0)))*(rotation)* 1.0;
+          fpos.x += sin(strIndex+time*2.0)*rotation ;
+          fpos.z += sin(strIndex+time*2.0)*rotation ;
+          fpos.y += (time - disintegrateTime)*disintegrateYSpeed;
+          fpos.x += (time - disintegrateTime)*disintegrateXSpeed;
+
           vec4 mvPosition = modelViewMatrix * fpos;
       //    mvPosition.y += 1.0*sin(volume*0.5+mvPosition.x/25.0)*(rotation*10.0);
       //    mvPosition.x -= 1.0*cos(volume*0.5+mvPosition.y/25.0)*(rotation*10.0);

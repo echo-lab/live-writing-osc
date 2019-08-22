@@ -16,6 +16,7 @@ var analyser1;
 var analyser2;
 var gSizeFactor = 0;
 var gFadeInDelay = 0.0;
+var gDisintegrateSpeed = 1.0;
 var gLayer = 0;
 
 function audioContextReady(){
@@ -409,13 +410,155 @@ window.onload = function() {
       lineIndex: {type: 'f', value: [] },
       chIndex: {type: 'f', value: [] },
       alphabetIndex:{type:'f', value: []},
-      appearTime:{type:'f',value:[]}
+      appearTime:{type:'f',value:[]},
+      disintegrateTime:{type:'f',value:[]},
+      disintegrateXSpeed:{type:'f',value:[]},
+      disintegrateYSpeed:{type:'f',value:[]},
+      letterAlpha:{type:'f',value:[]}
     };
+
+
 
 // keycode table is available here
 // https://css-tricks.com/snippets/javascript/javascript-keycodes/
+    var sanityCheckRegion = function(startLine, startCh, endLine, endCh){
+      if( startLine > endLine){
+        alert("disintegrate parameters error:startLine("+ startLine + ") > endLine(" + endLine + ")");
+        return false;
+      }
 
+      if( startLine == endLine && startCh >=endCh){
+        alert("disintegrate parameters error:startCh("+ startCh + ") > endCh(" + endCh + ")");
+        return false;
+      }
 
+      if(cmGrid[currentPage] == undefined
+        || cmGrid[currentPage][startLine]== undefined
+        || cmGrid[currentPage][startLine][startCh] == undefined){
+        alert("No letter at the specified starting position is not available");
+        return false;
+      }
+
+      if(cmGrid[currentPage] == undefined
+        || cmGrid[currentPage][endLine]== undefined
+        || cmGrid[currentPage][endLine][endCh] == undefined){
+        alert("No letter at the specified ending position is not available");
+        return false;
+      }
+
+      return true;
+
+    }
+
+    var setRegionAlpha = function(startLine, startCh, endLine, endCh, alpha){
+      if(!sanityCheckRegion(startLine, startCh, endLine, endCh))
+        return;
+
+      var setLetterAlpha = function(strIndex){
+          for (var k=0; k<4;k++){
+            attributes.letterAlpha.value[strIndex*4+k] = alpha;
+          }
+      }
+
+      if(startLine == endLine){// if they are the same lines
+        for (var j=startCh; j<endCh; j++){
+        //  removeLetterCodeMirror(startLine,j);
+          setLetterAlpha(cmGrid[currentPage][startLine][j].index);
+        }
+      }
+      else{// if they are not the same lines
+        // the first line
+        for (var j=startCh; j< cmGrid[currentPage][startLine].length; j++){
+          setLetterAlpha(cmGrid[currentPage][startLine][j].index);
+        }
+
+        // the last line
+        for (var j=0; j<endCh; j++){
+          setLetterAlpha(cmGrid[currentPage][endLine][j].index);
+
+        }
+
+        // the ones in the middle if the selection is more than two lines
+        for (var i=startLine+1; i< endLine; i++){
+          if(cmGrid[currentPage][i] == undefined){
+            alert("oops no removed[i] is undefined");
+            debugger;
+          }
+          for (var j=0; j<cmGrid[currentPage][i].length; j++){
+            setLetterAlpha(cmGrid[currentPage][i][j].index);
+
+          }
+        }
+      }
+      attributes.letterAlpha.needsUpdate = true;
+
+    }
+
+    var disintegrate = function(startLine, startCh, endLine, endCh, direction){
+      // sanity check
+      // 1. startLine < endLine
+      // 2. startLine,startCh exists
+      // 3. endLine,endCh exists
+
+      if(!sanityCheckRegion(startLine, startCh, endLine, endCh))
+        return;
+      var object;
+      var strIndex;
+      var disintegrateTime = uniforms.time.value;
+
+      var setDisintegrate = function(strIndex,_direction){
+
+        if(_direction){
+          var ranndomAngle = Math.PI * 2 * Math.random();
+          for (var k=0; k<4;k++){
+            attributes.disintegrateTime.value[strIndex*4+k] = disintegrateTime;
+            attributes.disintegrateXSpeed.value[strIndex*4+k] = Math.cos(ranndomAngle) * gDisintegrateSpeed;
+            attributes.disintegrateYSpeed.value[strIndex*4+k] = Math.sin(ranndomAngle) * gDisintegrateSpeed;
+          }
+        }else{
+          for (var k=0; k<4;k++){
+            attributes.disintegrateTime.value[strIndex*4+k] = disintegrateTime;
+            attributes.disintegrateXSpeed.value[strIndex*4+k] = 0 ;
+            attributes.disintegrateYSpeed.value[strIndex*4+k] = 0;
+          }
+        }
+      }
+
+      if(startLine == endLine){// if they are the same lines
+        for (var j=startCh; j<endCh; j++){
+        //  removeLetterCodeMirror(startLine,j);
+          setDisintegrate(cmGrid[currentPage][startLine][j].index,direction);
+        }
+      }
+      else{// if they are not the same lines
+        // the first line
+        for (var j=startCh; j< cmGrid[currentPage][startLine].length; j++){
+          setDisintegrate(cmGrid[currentPage][startLine][j].index,direction);
+        }
+
+        // the last line
+        for (var j=0; j<endCh; j++){
+          setDisintegrate(cmGrid[currentPage][endLine][j].index,direction);
+
+        }
+
+        // the ones in the middle if the selection is more than two lines
+        for (var i=startLine+1; i< endLine; i++){
+          if(cmGrid[currentPage][i] == undefined){
+            alert("oops no removed[i] is undefined");
+            debugger;
+          }
+          for (var j=0; j<cmGrid[currentPage][i].length; j++){
+            setDisintegrate(cmGrid[currentPage][i][j].index,direction);
+
+          }
+        }
+      }
+
+      attributes.disintegrateTime.needsUpdate = true;
+      attributes.disintegrateXSpeed.needsUpdate = true;
+      attributes.disintegrateYSpeed.needsUpdate = true;
+    }
 
     var removeLetterCodeMirror = function(line,ch){
       var object = cmGrid[currentPage][line][ch];
@@ -503,6 +646,10 @@ window.onload = function() {
         attributes.chIndex.value[strIndex*4+k] = ch;// THREE.Vector2(6.0,12.0);
         attributes.alphabetIndex.value[strIndex*4+k] = alphabetIndex;// THREE.Vector2(6.0,12.0);
         attributes.appearTime.value[strIndex*4+k] = appearTime;// THREE.Vector2(6.0,12.0);
+        attributes.disintegrateTime.value[strIndex*4+k] = 0.0;// THREE.Vector2(6.0,12.0);
+        attributes.disintegrateXSpeed.value[strIndex*4+k] = 0.0;// THREE.Vector2(6.0,12.0);
+        attributes.disintegrateYSpeed.value[strIndex*4+k] = 0.0;// THREE.Vector2(6.0,12.0);
+        attributes.letterAlpha.value[strIndex*4+k] = 1.0;
       }
       var face = new THREE.Face3(strIndex*4+0, strIndex*4+1, strIndex*4+2);
       geo[currentPage][geoindex].faces.push(face);
@@ -872,10 +1019,26 @@ window.onload = function() {
           }
           break;
         case "/alpha":
-          if(obj.length!=2){
-            alert("We need 1 parameters for /alpha")
-          }else{
+          if(obj.length==2){
+            if(isNaN(obj[1])){
+              alert("The parameters of /alpha should be numeric.");
+              return;
+            }
             uniforms.gAlpha.value = parseFloat(obj[1])/255.0;
+          }else if (obj.length==6){
+
+            var startLine = parseInt(obj[2]),
+            startCh = parseInt(obj[3]),
+            endLine = parseInt(obj[4]),
+            endCh = parseInt(obj[5]),
+            content = parseFloat(obj[1]);
+            if(isNaN(startLine)||isNaN(startCh)||isNaN(endLine)||isNaN(endCh)||isNaN(content)){
+              alert("The parameters of /alpha should be numeric.");
+              return;
+            }
+            setRegionAlpha(startLine, startCh, endLine, endCh, content/255.0);
+          }else{
+            alert("We need 1 or 4 parameters for /alpha", obj);
           }
           break;
         case "/fadeindelay":
@@ -995,6 +1158,40 @@ window.onload = function() {
                 ch: toch // set the character position to the end of the line
             });
           }
+          break;
+        case "/disintegrate":
+          if(obj.length!=5){
+            alert("removed requires 4 more parameters", obj);
+            return;
+          }
+          var startLine = parseInt(obj[1]),
+          startCh = parseInt(obj[2]),
+          endLine = parseInt(obj[3]),
+          endCh = parseInt(obj[4]);
+          disintegrate(startLine, startCh, endLine, endCh, true);
+          break;
+        case "/integrate":
+          if(obj.length!=5){
+            alert("removed requires 4 more parameters", obj);
+            return;
+          }
+          var startLine = parseInt(obj[1]),
+          startCh = parseInt(obj[2]),
+          endLine = parseInt(obj[3]),
+          endCh = parseInt(obj[4]);
+          disintegrate(startLine, startCh, endLine, endCh, false);
+          break;
+        case "/disintegrateSpeed":
+          if(obj.length!=2){
+            alert("/disintegrateSpeed expect one parameter");
+            return;
+          }
+          var content = obj[1];
+          if(isNaN(content)){
+            alert("The 2nd parameter of /disintegrateSpeed should be numeric.");
+            return;
+          }
+          gDisintegrateSpeed = parseFloat(content)/10;
           break;
         case "/remove":
           if(obj.length!=5){

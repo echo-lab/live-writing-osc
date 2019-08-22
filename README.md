@@ -36,7 +36,10 @@
     - `/fontcolor [greyscale]`:  the font color in grayscale [0,255]
     - `/fontscale [fontsize]`:  the font size - numeric value 0 is default size.
     - `/alpha [alphavalue]`:  set alpha value of all text [0,255] 0 being transparent.
-    - `/fadeindelay [delay]`:  delay value for text addition. if positive value, the text will fade in slowly. [0,-] 
+    - `/alpha [alphavalue] [start line] [start ch] [end line] [end ch]`:  set alpha value of text in the specified region, [0,255] 0 being transparent.
+    - `/fadeindelay [delay]`:  delay value for text addition. if positive value, the text will fade in slowly. [0,-]
     - `/fontscale [fontsize]`:  the font size - numeric value 0 is default size.
+    - `/disintegrate [start line] [start ch] [end line] [end ch]`: any letter within the specified region will be dispersed to a random direction.
+    - `/integrate [start line] [start ch] [end line] [end ch]`: any letters dispersed by `/disintegrate` within the specified region will be reset.
     - `/remove [start line] [start ch] [end line] [end ch]`
 - reference
